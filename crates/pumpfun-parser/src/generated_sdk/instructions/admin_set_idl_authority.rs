@@ -7,41 +7,61 @@
 
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
+use solana_pubkey::Pubkey;
 
-pub const UPDATE_GLOBAL_AUTHORITY_DISCRIMINATOR: [u8; 8] = [227, 181, 74, 196, 208, 21, 97, 213];
+pub const ADMIN_SET_IDL_AUTHORITY_DISCRIMINATOR: [u8; 8] = [8, 217, 96, 231, 144, 104, 192, 5];
 
 /// Accounts.
 #[derive(Debug)]
-pub struct UpdateGlobalAuthority {
-    pub global: solana_pubkey::Pubkey,
-
+pub struct AdminSetIdlAuthority {
     pub authority: solana_pubkey::Pubkey,
 
-    pub new_authority: solana_pubkey::Pubkey,
+    pub global: solana_pubkey::Pubkey,
+
+    pub idl_account: solana_pubkey::Pubkey,
+
+    pub system_program: solana_pubkey::Pubkey,
+
+    pub program_signer: solana_pubkey::Pubkey,
 
     pub event_authority: solana_pubkey::Pubkey,
 
     pub program: solana_pubkey::Pubkey,
 }
 
-impl UpdateGlobalAuthority {
-    pub fn instruction(&self) -> solana_instruction::Instruction {
-        self.instruction_with_remaining_accounts(&[])
+impl AdminSetIdlAuthority {
+    pub fn instruction(
+        &self,
+        args: AdminSetIdlAuthorityInstructionArgs,
+    ) -> solana_instruction::Instruction {
+        self.instruction_with_remaining_accounts(args, &[])
     }
     #[allow(clippy::arithmetic_side_effects)]
     #[allow(clippy::vec_init_then_push)]
     pub fn instruction_with_remaining_accounts(
         &self,
+        args: AdminSetIdlAuthorityInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
-        accounts.push(solana_instruction::AccountMeta::new(self.global, false));
+        let mut accounts = Vec::with_capacity(7 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.authority,
             true,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.new_authority,
+            self.global,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new(
+            self.idl_account,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.system_program,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program_signer,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -53,9 +73,11 @@ impl UpdateGlobalAuthority {
             false,
         ));
         accounts.extend_from_slice(remaining_accounts);
-        let data = UpdateGlobalAuthorityInstructionData::new()
+        let mut data = AdminSetIdlAuthorityInstructionData::new()
             .try_to_vec()
             .unwrap();
+        let mut args = args.try_to_vec().unwrap();
+        data.append(&mut args);
 
         solana_instruction::Instruction {
             program_id: crate::PUMP_ID,
@@ -67,14 +89,14 @@ impl UpdateGlobalAuthority {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct UpdateGlobalAuthorityInstructionData {
+pub struct AdminSetIdlAuthorityInstructionData {
     discriminator: [u8; 8],
 }
 
-impl UpdateGlobalAuthorityInstructionData {
+impl AdminSetIdlAuthorityInstructionData {
     pub fn new() -> Self {
         Self {
-            discriminator: [227, 181, 74, 196, 208, 21, 97, 213],
+            discriminator: [8, 217, 96, 231, 144, 104, 192, 5],
         }
     }
 
@@ -83,39 +105,51 @@ impl UpdateGlobalAuthorityInstructionData {
     }
 }
 
-impl Default for UpdateGlobalAuthorityInstructionData {
+impl Default for AdminSetIdlAuthorityInstructionData {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Instruction builder for `UpdateGlobalAuthority`.
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct AdminSetIdlAuthorityInstructionArgs {
+    pub idl_authority: Pubkey,
+}
+
+impl AdminSetIdlAuthorityInstructionArgs {
+    pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
+        borsh::to_vec(self)
+    }
+}
+
+/// Instruction builder for `AdminSetIdlAuthority`.
 ///
 /// ### Accounts:
 ///
-///   0. `[writable]` global
-///   1. `[signer]` authority
-///   2. `[]` new_authority
-///   3. `[]` event_authority
-///   4. `[]` program
+///   0. `[signer]` authority
+///   1. `[]` global
+///   2. `[writable]` idl_account
+///   3. `[optional]` system_program (default to `11111111111111111111111111111111`)
+///   4. `[]` program_signer
+///   5. `[]` event_authority
+///   6. `[]` program
 #[derive(Clone, Debug, Default)]
-pub struct UpdateGlobalAuthorityBuilder {
-    global: Option<solana_pubkey::Pubkey>,
+pub struct AdminSetIdlAuthorityBuilder {
     authority: Option<solana_pubkey::Pubkey>,
-    new_authority: Option<solana_pubkey::Pubkey>,
+    global: Option<solana_pubkey::Pubkey>,
+    idl_account: Option<solana_pubkey::Pubkey>,
+    system_program: Option<solana_pubkey::Pubkey>,
+    program_signer: Option<solana_pubkey::Pubkey>,
     event_authority: Option<solana_pubkey::Pubkey>,
     program: Option<solana_pubkey::Pubkey>,
+    idl_authority: Option<Pubkey>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
-impl UpdateGlobalAuthorityBuilder {
+impl AdminSetIdlAuthorityBuilder {
     pub fn new() -> Self {
         Self::default()
-    }
-    #[inline(always)]
-    pub fn global(&mut self, global: solana_pubkey::Pubkey) -> &mut Self {
-        self.global = Some(global);
-        self
     }
     #[inline(always)]
     pub fn authority(&mut self, authority: solana_pubkey::Pubkey) -> &mut Self {
@@ -123,8 +157,24 @@ impl UpdateGlobalAuthorityBuilder {
         self
     }
     #[inline(always)]
-    pub fn new_authority(&mut self, new_authority: solana_pubkey::Pubkey) -> &mut Self {
-        self.new_authority = Some(new_authority);
+    pub fn global(&mut self, global: solana_pubkey::Pubkey) -> &mut Self {
+        self.global = Some(global);
+        self
+    }
+    #[inline(always)]
+    pub fn idl_account(&mut self, idl_account: solana_pubkey::Pubkey) -> &mut Self {
+        self.idl_account = Some(idl_account);
+        self
+    }
+    /// `[optional account, default to '11111111111111111111111111111111']`
+    #[inline(always)]
+    pub fn system_program(&mut self, system_program: solana_pubkey::Pubkey) -> &mut Self {
+        self.system_program = Some(system_program);
+        self
+    }
+    #[inline(always)]
+    pub fn program_signer(&mut self, program_signer: solana_pubkey::Pubkey) -> &mut Self {
+        self.program_signer = Some(program_signer);
         self
     }
     #[inline(always)]
@@ -135,6 +185,11 @@ impl UpdateGlobalAuthorityBuilder {
     #[inline(always)]
     pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
         self.program = Some(program);
+        self
+    }
+    #[inline(always)]
+    pub fn idl_authority(&mut self, idl_authority: Pubkey) -> &mut Self {
+        self.idl_authority = Some(idl_authority);
         self
     }
     /// Add an additional account to the instruction.
@@ -154,59 +209,83 @@ impl UpdateGlobalAuthorityBuilder {
     }
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
-        let accounts = UpdateGlobalAuthority {
-            global: self.global.expect("global is not set"),
+        let accounts = AdminSetIdlAuthority {
             authority: self.authority.expect("authority is not set"),
-            new_authority: self.new_authority.expect("new_authority is not set"),
+            global: self.global.expect("global is not set"),
+            idl_account: self.idl_account.expect("idl_account is not set"),
+            system_program: self
+                .system_program
+                .unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
+            program_signer: self.program_signer.expect("program_signer is not set"),
             event_authority: self.event_authority.expect("event_authority is not set"),
             program: self.program.expect("program is not set"),
         };
+        let args = AdminSetIdlAuthorityInstructionArgs {
+            idl_authority: self
+                .idl_authority
+                .clone()
+                .expect("idl_authority is not set"),
+        };
 
-        accounts.instruction_with_remaining_accounts(&self.__remaining_accounts)
+        accounts.instruction_with_remaining_accounts(args, &self.__remaining_accounts)
     }
 }
 
-/// `update_global_authority` CPI accounts.
-pub struct UpdateGlobalAuthorityCpiAccounts<'a, 'b> {
-    pub global: &'b solana_account_info::AccountInfo<'a>,
-
+/// `admin_set_idl_authority` CPI accounts.
+pub struct AdminSetIdlAuthorityCpiAccounts<'a, 'b> {
     pub authority: &'b solana_account_info::AccountInfo<'a>,
 
-    pub new_authority: &'b solana_account_info::AccountInfo<'a>,
+    pub global: &'b solana_account_info::AccountInfo<'a>,
+
+    pub idl_account: &'b solana_account_info::AccountInfo<'a>,
+
+    pub system_program: &'b solana_account_info::AccountInfo<'a>,
+
+    pub program_signer: &'b solana_account_info::AccountInfo<'a>,
 
     pub event_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
 }
 
-/// `update_global_authority` CPI instruction.
-pub struct UpdateGlobalAuthorityCpi<'a, 'b> {
+/// `admin_set_idl_authority` CPI instruction.
+pub struct AdminSetIdlAuthorityCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
-    pub global: &'b solana_account_info::AccountInfo<'a>,
-
     pub authority: &'b solana_account_info::AccountInfo<'a>,
 
-    pub new_authority: &'b solana_account_info::AccountInfo<'a>,
+    pub global: &'b solana_account_info::AccountInfo<'a>,
+
+    pub idl_account: &'b solana_account_info::AccountInfo<'a>,
+
+    pub system_program: &'b solana_account_info::AccountInfo<'a>,
+
+    pub program_signer: &'b solana_account_info::AccountInfo<'a>,
 
     pub event_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
+    /// The arguments for the instruction.
+    pub __args: AdminSetIdlAuthorityInstructionArgs,
 }
 
-impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
+impl<'a, 'b> AdminSetIdlAuthorityCpi<'a, 'b> {
     pub fn new(
         program: &'b solana_account_info::AccountInfo<'a>,
-        accounts: UpdateGlobalAuthorityCpiAccounts<'a, 'b>,
+        accounts: AdminSetIdlAuthorityCpiAccounts<'a, 'b>,
+        args: AdminSetIdlAuthorityInstructionArgs,
     ) -> Self {
         Self {
             __program: program,
-            global: accounts.global,
             authority: accounts.authority,
-            new_authority: accounts.new_authority,
+            global: accounts.global,
+            idl_account: accounts.idl_account,
+            system_program: accounts.system_program,
+            program_signer: accounts.program_signer,
             event_authority: accounts.event_authority,
             program: accounts.program,
+            __args: args,
         }
     }
     #[inline(always)]
@@ -232,17 +311,25 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
-        accounts.push(solana_instruction::AccountMeta::new(
-            *self.global.key,
-            false,
-        ));
+        let mut accounts = Vec::with_capacity(7 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.authority.key,
             true,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.new_authority.key,
+            *self.global.key,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new(
+            *self.idl_account.key,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.system_program.key,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program_signer.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -260,20 +347,24 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
                 is_writable: remaining_account.2,
             })
         });
-        let data = UpdateGlobalAuthorityInstructionData::new()
+        let mut data = AdminSetIdlAuthorityInstructionData::new()
             .try_to_vec()
             .unwrap();
+        let mut args = self.__args.try_to_vec().unwrap();
+        data.append(&mut args);
 
         let instruction = solana_instruction::Instruction {
             program_id: crate::PUMP_ID,
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(6 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(8 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
-        account_infos.push(self.global.clone());
         account_infos.push(self.authority.clone());
-        account_infos.push(self.new_authority.clone());
+        account_infos.push(self.global.clone());
+        account_infos.push(self.idl_account.clone());
+        account_infos.push(self.system_program.clone());
+        account_infos.push(self.program_signer.clone());
         account_infos.push(self.event_authority.clone());
         account_infos.push(self.program.clone());
         remaining_accounts
@@ -288,37 +379,37 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
     }
 }
 
-/// Instruction builder for `UpdateGlobalAuthority` via CPI.
+/// Instruction builder for `AdminSetIdlAuthority` via CPI.
 ///
 /// ### Accounts:
 ///
-///   0. `[writable]` global
-///   1. `[signer]` authority
-///   2. `[]` new_authority
-///   3. `[]` event_authority
-///   4. `[]` program
+///   0. `[signer]` authority
+///   1. `[]` global
+///   2. `[writable]` idl_account
+///   3. `[]` system_program
+///   4. `[]` program_signer
+///   5. `[]` event_authority
+///   6. `[]` program
 #[derive(Clone, Debug)]
-pub struct UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
-    instruction: Box<UpdateGlobalAuthorityCpiBuilderInstruction<'a, 'b>>,
+pub struct AdminSetIdlAuthorityCpiBuilder<'a, 'b> {
+    instruction: Box<AdminSetIdlAuthorityCpiBuilderInstruction<'a, 'b>>,
 }
 
-impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
+impl<'a, 'b> AdminSetIdlAuthorityCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
-        let instruction = Box::new(UpdateGlobalAuthorityCpiBuilderInstruction {
+        let instruction = Box::new(AdminSetIdlAuthorityCpiBuilderInstruction {
             __program: program,
-            global: None,
             authority: None,
-            new_authority: None,
+            global: None,
+            idl_account: None,
+            system_program: None,
+            program_signer: None,
             event_authority: None,
             program: None,
+            idl_authority: None,
             __remaining_accounts: Vec::new(),
         });
         Self { instruction }
-    }
-    #[inline(always)]
-    pub fn global(&mut self, global: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-        self.instruction.global = Some(global);
-        self
     }
     #[inline(always)]
     pub fn authority(&mut self, authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
@@ -326,11 +417,32 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
         self
     }
     #[inline(always)]
-    pub fn new_authority(
+    pub fn global(&mut self, global: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+        self.instruction.global = Some(global);
+        self
+    }
+    #[inline(always)]
+    pub fn idl_account(
         &mut self,
-        new_authority: &'b solana_account_info::AccountInfo<'a>,
+        idl_account: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
-        self.instruction.new_authority = Some(new_authority);
+        self.instruction.idl_account = Some(idl_account);
+        self
+    }
+    #[inline(always)]
+    pub fn system_program(
+        &mut self,
+        system_program: &'b solana_account_info::AccountInfo<'a>,
+    ) -> &mut Self {
+        self.instruction.system_program = Some(system_program);
+        self
+    }
+    #[inline(always)]
+    pub fn program_signer(
+        &mut self,
+        program_signer: &'b solana_account_info::AccountInfo<'a>,
+    ) -> &mut Self {
+        self.instruction.program_signer = Some(program_signer);
         self
     }
     #[inline(always)]
@@ -344,6 +456,11 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
     #[inline(always)]
     pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
         self.instruction.program = Some(program);
+        self
+    }
+    #[inline(always)]
+    pub fn idl_authority(&mut self, idl_authority: Pubkey) -> &mut Self {
+        self.instruction.idl_authority = Some(idl_authority);
         self
     }
     /// Add an additional account to the instruction.
@@ -380,17 +497,34 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
     #[allow(clippy::clone_on_copy)]
     #[allow(clippy::vec_init_then_push)]
     pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
-        let instruction = UpdateGlobalAuthorityCpi {
+        let args = AdminSetIdlAuthorityInstructionArgs {
+            idl_authority: self
+                .instruction
+                .idl_authority
+                .clone()
+                .expect("idl_authority is not set"),
+        };
+        let instruction = AdminSetIdlAuthorityCpi {
             __program: self.instruction.__program,
-
-            global: self.instruction.global.expect("global is not set"),
 
             authority: self.instruction.authority.expect("authority is not set"),
 
-            new_authority: self
+            global: self.instruction.global.expect("global is not set"),
+
+            idl_account: self
                 .instruction
-                .new_authority
-                .expect("new_authority is not set"),
+                .idl_account
+                .expect("idl_account is not set"),
+
+            system_program: self
+                .instruction
+                .system_program
+                .expect("system_program is not set"),
+
+            program_signer: self
+                .instruction
+                .program_signer
+                .expect("program_signer is not set"),
 
             event_authority: self
                 .instruction
@@ -398,6 +532,7 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
                 .expect("event_authority is not set"),
 
             program: self.instruction.program.expect("program is not set"),
+            __args: args,
         };
         instruction.invoke_signed_with_remaining_accounts(
             signers_seeds,
@@ -407,13 +542,16 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
 }
 
 #[derive(Clone, Debug)]
-struct UpdateGlobalAuthorityCpiBuilderInstruction<'a, 'b> {
+struct AdminSetIdlAuthorityCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
-    global: Option<&'b solana_account_info::AccountInfo<'a>>,
     authority: Option<&'b solana_account_info::AccountInfo<'a>>,
-    new_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+    global: Option<&'b solana_account_info::AccountInfo<'a>>,
+    idl_account: Option<&'b solana_account_info::AccountInfo<'a>>,
+    system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+    program_signer: Option<&'b solana_account_info::AccountInfo<'a>>,
     event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
     program: Option<&'b solana_account_info::AccountInfo<'a>>,
+    idl_authority: Option<Pubkey>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

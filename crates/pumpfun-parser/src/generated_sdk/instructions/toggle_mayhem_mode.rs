@@ -8,42 +8,37 @@
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 
-pub const UPDATE_GLOBAL_AUTHORITY_DISCRIMINATOR: [u8; 8] = [227, 181, 74, 196, 208, 21, 97, 213];
+pub const TOGGLE_MAYHEM_MODE_DISCRIMINATOR: [u8; 8] = [1, 9, 111, 208, 100, 31, 255, 163];
 
 /// Accounts.
 #[derive(Debug)]
-pub struct UpdateGlobalAuthority {
+pub struct ToggleMayhemMode {
     pub global: solana_pubkey::Pubkey,
 
     pub authority: solana_pubkey::Pubkey,
-
-    pub new_authority: solana_pubkey::Pubkey,
 
     pub event_authority: solana_pubkey::Pubkey,
 
     pub program: solana_pubkey::Pubkey,
 }
 
-impl UpdateGlobalAuthority {
-    pub fn instruction(&self) -> solana_instruction::Instruction {
-        self.instruction_with_remaining_accounts(&[])
+impl ToggleMayhemMode {
+    pub fn instruction(
+        &self,
+        args: ToggleMayhemModeInstructionArgs,
+    ) -> solana_instruction::Instruction {
+        self.instruction_with_remaining_accounts(args, &[])
     }
     #[allow(clippy::arithmetic_side_effects)]
     #[allow(clippy::vec_init_then_push)]
     pub fn instruction_with_remaining_accounts(
         &self,
+        args: ToggleMayhemModeInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(4 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(self.global, false));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.authority,
-            true,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.new_authority,
-            false,
-        ));
+        accounts.push(solana_instruction::AccountMeta::new(self.authority, true));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.event_authority,
             false,
@@ -53,9 +48,9 @@ impl UpdateGlobalAuthority {
             false,
         ));
         accounts.extend_from_slice(remaining_accounts);
-        let data = UpdateGlobalAuthorityInstructionData::new()
-            .try_to_vec()
-            .unwrap();
+        let mut data = ToggleMayhemModeInstructionData::new().try_to_vec().unwrap();
+        let mut args = args.try_to_vec().unwrap();
+        data.append(&mut args);
 
         solana_instruction::Instruction {
             program_id: crate::PUMP_ID,
@@ -67,14 +62,14 @@ impl UpdateGlobalAuthority {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct UpdateGlobalAuthorityInstructionData {
+pub struct ToggleMayhemModeInstructionData {
     discriminator: [u8; 8],
 }
 
-impl UpdateGlobalAuthorityInstructionData {
+impl ToggleMayhemModeInstructionData {
     pub fn new() -> Self {
         Self {
-            discriminator: [227, 181, 74, 196, 208, 21, 97, 213],
+            discriminator: [1, 9, 111, 208, 100, 31, 255, 163],
         }
     }
 
@@ -83,32 +78,43 @@ impl UpdateGlobalAuthorityInstructionData {
     }
 }
 
-impl Default for UpdateGlobalAuthorityInstructionData {
+impl Default for ToggleMayhemModeInstructionData {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Instruction builder for `UpdateGlobalAuthority`.
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ToggleMayhemModeInstructionArgs {
+    pub enabled: bool,
+}
+
+impl ToggleMayhemModeInstructionArgs {
+    pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
+        borsh::to_vec(self)
+    }
+}
+
+/// Instruction builder for `ToggleMayhemMode`.
 ///
 /// ### Accounts:
 ///
 ///   0. `[writable]` global
-///   1. `[signer]` authority
-///   2. `[]` new_authority
-///   3. `[]` event_authority
-///   4. `[]` program
+///   1. `[writable, signer]` authority
+///   2. `[]` event_authority
+///   3. `[]` program
 #[derive(Clone, Debug, Default)]
-pub struct UpdateGlobalAuthorityBuilder {
+pub struct ToggleMayhemModeBuilder {
     global: Option<solana_pubkey::Pubkey>,
     authority: Option<solana_pubkey::Pubkey>,
-    new_authority: Option<solana_pubkey::Pubkey>,
     event_authority: Option<solana_pubkey::Pubkey>,
     program: Option<solana_pubkey::Pubkey>,
+    enabled: Option<bool>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
-impl UpdateGlobalAuthorityBuilder {
+impl ToggleMayhemModeBuilder {
     pub fn new() -> Self {
         Self::default()
     }
@@ -123,11 +129,6 @@ impl UpdateGlobalAuthorityBuilder {
         self
     }
     #[inline(always)]
-    pub fn new_authority(&mut self, new_authority: solana_pubkey::Pubkey) -> &mut Self {
-        self.new_authority = Some(new_authority);
-        self
-    }
-    #[inline(always)]
     pub fn event_authority(&mut self, event_authority: solana_pubkey::Pubkey) -> &mut Self {
         self.event_authority = Some(event_authority);
         self
@@ -135,6 +136,11 @@ impl UpdateGlobalAuthorityBuilder {
     #[inline(always)]
     pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
         self.program = Some(program);
+        self
+    }
+    #[inline(always)]
+    pub fn enabled(&mut self, enabled: bool) -> &mut Self {
+        self.enabled = Some(enabled);
         self
     }
     /// Add an additional account to the instruction.
@@ -154,33 +160,33 @@ impl UpdateGlobalAuthorityBuilder {
     }
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
-        let accounts = UpdateGlobalAuthority {
+        let accounts = ToggleMayhemMode {
             global: self.global.expect("global is not set"),
             authority: self.authority.expect("authority is not set"),
-            new_authority: self.new_authority.expect("new_authority is not set"),
             event_authority: self.event_authority.expect("event_authority is not set"),
             program: self.program.expect("program is not set"),
         };
+        let args = ToggleMayhemModeInstructionArgs {
+            enabled: self.enabled.clone().expect("enabled is not set"),
+        };
 
-        accounts.instruction_with_remaining_accounts(&self.__remaining_accounts)
+        accounts.instruction_with_remaining_accounts(args, &self.__remaining_accounts)
     }
 }
 
-/// `update_global_authority` CPI accounts.
-pub struct UpdateGlobalAuthorityCpiAccounts<'a, 'b> {
+/// `toggle_mayhem_mode` CPI accounts.
+pub struct ToggleMayhemModeCpiAccounts<'a, 'b> {
     pub global: &'b solana_account_info::AccountInfo<'a>,
 
     pub authority: &'b solana_account_info::AccountInfo<'a>,
-
-    pub new_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub event_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
 }
 
-/// `update_global_authority` CPI instruction.
-pub struct UpdateGlobalAuthorityCpi<'a, 'b> {
+/// `toggle_mayhem_mode` CPI instruction.
+pub struct ToggleMayhemModeCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
@@ -188,25 +194,26 @@ pub struct UpdateGlobalAuthorityCpi<'a, 'b> {
 
     pub authority: &'b solana_account_info::AccountInfo<'a>,
 
-    pub new_authority: &'b solana_account_info::AccountInfo<'a>,
-
     pub event_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
+    /// The arguments for the instruction.
+    pub __args: ToggleMayhemModeInstructionArgs,
 }
 
-impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
+impl<'a, 'b> ToggleMayhemModeCpi<'a, 'b> {
     pub fn new(
         program: &'b solana_account_info::AccountInfo<'a>,
-        accounts: UpdateGlobalAuthorityCpiAccounts<'a, 'b>,
+        accounts: ToggleMayhemModeCpiAccounts<'a, 'b>,
+        args: ToggleMayhemModeInstructionArgs,
     ) -> Self {
         Self {
             __program: program,
             global: accounts.global,
             authority: accounts.authority,
-            new_authority: accounts.new_authority,
             event_authority: accounts.event_authority,
             program: accounts.program,
+            __args: args,
         }
     }
     #[inline(always)]
@@ -232,18 +239,14 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(4 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(
             *self.global.key,
             false,
         ));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
+        accounts.push(solana_instruction::AccountMeta::new(
             *self.authority.key,
             true,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.new_authority.key,
-            false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.event_authority.key,
@@ -260,20 +263,19 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
                 is_writable: remaining_account.2,
             })
         });
-        let data = UpdateGlobalAuthorityInstructionData::new()
-            .try_to_vec()
-            .unwrap();
+        let mut data = ToggleMayhemModeInstructionData::new().try_to_vec().unwrap();
+        let mut args = self.__args.try_to_vec().unwrap();
+        data.append(&mut args);
 
         let instruction = solana_instruction::Instruction {
             program_id: crate::PUMP_ID,
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(6 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(5 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
         account_infos.push(self.global.clone());
         account_infos.push(self.authority.clone());
-        account_infos.push(self.new_authority.clone());
         account_infos.push(self.event_authority.clone());
         account_infos.push(self.program.clone());
         remaining_accounts
@@ -288,29 +290,28 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
     }
 }
 
-/// Instruction builder for `UpdateGlobalAuthority` via CPI.
+/// Instruction builder for `ToggleMayhemMode` via CPI.
 ///
 /// ### Accounts:
 ///
 ///   0. `[writable]` global
-///   1. `[signer]` authority
-///   2. `[]` new_authority
-///   3. `[]` event_authority
-///   4. `[]` program
+///   1. `[writable, signer]` authority
+///   2. `[]` event_authority
+///   3. `[]` program
 #[derive(Clone, Debug)]
-pub struct UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
-    instruction: Box<UpdateGlobalAuthorityCpiBuilderInstruction<'a, 'b>>,
+pub struct ToggleMayhemModeCpiBuilder<'a, 'b> {
+    instruction: Box<ToggleMayhemModeCpiBuilderInstruction<'a, 'b>>,
 }
 
-impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
+impl<'a, 'b> ToggleMayhemModeCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
-        let instruction = Box::new(UpdateGlobalAuthorityCpiBuilderInstruction {
+        let instruction = Box::new(ToggleMayhemModeCpiBuilderInstruction {
             __program: program,
             global: None,
             authority: None,
-            new_authority: None,
             event_authority: None,
             program: None,
+            enabled: None,
             __remaining_accounts: Vec::new(),
         });
         Self { instruction }
@@ -326,14 +327,6 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
         self
     }
     #[inline(always)]
-    pub fn new_authority(
-        &mut self,
-        new_authority: &'b solana_account_info::AccountInfo<'a>,
-    ) -> &mut Self {
-        self.instruction.new_authority = Some(new_authority);
-        self
-    }
-    #[inline(always)]
     pub fn event_authority(
         &mut self,
         event_authority: &'b solana_account_info::AccountInfo<'a>,
@@ -344,6 +337,11 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
     #[inline(always)]
     pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
         self.instruction.program = Some(program);
+        self
+    }
+    #[inline(always)]
+    pub fn enabled(&mut self, enabled: bool) -> &mut Self {
+        self.instruction.enabled = Some(enabled);
         self
     }
     /// Add an additional account to the instruction.
@@ -380,17 +378,19 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
     #[allow(clippy::clone_on_copy)]
     #[allow(clippy::vec_init_then_push)]
     pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
-        let instruction = UpdateGlobalAuthorityCpi {
+        let args = ToggleMayhemModeInstructionArgs {
+            enabled: self
+                .instruction
+                .enabled
+                .clone()
+                .expect("enabled is not set"),
+        };
+        let instruction = ToggleMayhemModeCpi {
             __program: self.instruction.__program,
 
             global: self.instruction.global.expect("global is not set"),
 
             authority: self.instruction.authority.expect("authority is not set"),
-
-            new_authority: self
-                .instruction
-                .new_authority
-                .expect("new_authority is not set"),
 
             event_authority: self
                 .instruction
@@ -398,6 +398,7 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
                 .expect("event_authority is not set"),
 
             program: self.instruction.program.expect("program is not set"),
+            __args: args,
         };
         instruction.invoke_signed_with_remaining_accounts(
             signers_seeds,
@@ -407,13 +408,13 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
 }
 
 #[derive(Clone, Debug)]
-struct UpdateGlobalAuthorityCpiBuilderInstruction<'a, 'b> {
+struct ToggleMayhemModeCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
     global: Option<&'b solana_account_info::AccountInfo<'a>>,
     authority: Option<&'b solana_account_info::AccountInfo<'a>>,
-    new_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
     event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
     program: Option<&'b solana_account_info::AccountInfo<'a>>,
+    enabled: Option<bool>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

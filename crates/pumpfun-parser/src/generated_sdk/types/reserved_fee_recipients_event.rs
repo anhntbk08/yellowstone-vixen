@@ -11,12 +11,12 @@ use solana_pubkey::Pubkey;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CollectCreatorFeeEvent {
+pub struct ReservedFeeRecipientsEvent {
     pub timestamp: i64,
     #[cfg_attr(
         feature = "serde",
         serde(with = "serde_with::As::<serde_with::DisplayFromStr>")
     )]
-    pub creator: Pubkey,
-    pub creator_fee: u64,
+    pub reserved_fee_recipient: Pubkey,
+    pub reserved_fee_recipients: [Pubkey; 7],
 }

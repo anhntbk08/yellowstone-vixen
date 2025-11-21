@@ -8,23 +8,26 @@
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 
-pub const UPDATE_GLOBAL_AUTHORITY_DISCRIMINATOR: [u8; 8] = [227, 181, 74, 196, 208, 21, 97, 213];
+pub const INIT_USER_VOLUME_ACCUMULATOR_DISCRIMINATOR: [u8; 8] =
+    [94, 6, 202, 115, 255, 96, 232, 183];
 
 /// Accounts.
 #[derive(Debug)]
-pub struct UpdateGlobalAuthority {
-    pub global: solana_pubkey::Pubkey,
+pub struct InitUserVolumeAccumulator {
+    pub payer: solana_pubkey::Pubkey,
 
-    pub authority: solana_pubkey::Pubkey,
+    pub user: solana_pubkey::Pubkey,
 
-    pub new_authority: solana_pubkey::Pubkey,
+    pub user_volume_accumulator: solana_pubkey::Pubkey,
+
+    pub system_program: solana_pubkey::Pubkey,
 
     pub event_authority: solana_pubkey::Pubkey,
 
     pub program: solana_pubkey::Pubkey,
 }
 
-impl UpdateGlobalAuthority {
+impl InitUserVolumeAccumulator {
     pub fn instruction(&self) -> solana_instruction::Instruction {
         self.instruction_with_remaining_accounts(&[])
     }
@@ -34,14 +37,17 @@ impl UpdateGlobalAuthority {
         &self,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
-        accounts.push(solana_instruction::AccountMeta::new(self.global, false));
+        let mut accounts = Vec::with_capacity(6 + remaining_accounts.len());
+        accounts.push(solana_instruction::AccountMeta::new(self.payer, true));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.authority,
-            true,
+            self.user, false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new(
+            self.user_volume_accumulator,
+            false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.new_authority,
+            self.system_program,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -53,7 +59,7 @@ impl UpdateGlobalAuthority {
             false,
         ));
         accounts.extend_from_slice(remaining_accounts);
-        let data = UpdateGlobalAuthorityInstructionData::new()
+        let data = InitUserVolumeAccumulatorInstructionData::new()
             .try_to_vec()
             .unwrap();
 
@@ -67,14 +73,14 @@ impl UpdateGlobalAuthority {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct UpdateGlobalAuthorityInstructionData {
+pub struct InitUserVolumeAccumulatorInstructionData {
     discriminator: [u8; 8],
 }
 
-impl UpdateGlobalAuthorityInstructionData {
+impl InitUserVolumeAccumulatorInstructionData {
     pub fn new() -> Self {
         Self {
-            discriminator: [227, 181, 74, 196, 208, 21, 97, 213],
+            discriminator: [94, 6, 202, 115, 255, 96, 232, 183],
         }
     }
 
@@ -83,48 +89,59 @@ impl UpdateGlobalAuthorityInstructionData {
     }
 }
 
-impl Default for UpdateGlobalAuthorityInstructionData {
+impl Default for InitUserVolumeAccumulatorInstructionData {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Instruction builder for `UpdateGlobalAuthority`.
+/// Instruction builder for `InitUserVolumeAccumulator`.
 ///
 /// ### Accounts:
 ///
-///   0. `[writable]` global
-///   1. `[signer]` authority
-///   2. `[]` new_authority
-///   3. `[]` event_authority
-///   4. `[]` program
+///   0. `[writable, signer]` payer
+///   1. `[]` user
+///   2. `[writable]` user_volume_accumulator
+///   3. `[optional]` system_program (default to `11111111111111111111111111111111`)
+///   4. `[]` event_authority
+///   5. `[]` program
 #[derive(Clone, Debug, Default)]
-pub struct UpdateGlobalAuthorityBuilder {
-    global: Option<solana_pubkey::Pubkey>,
-    authority: Option<solana_pubkey::Pubkey>,
-    new_authority: Option<solana_pubkey::Pubkey>,
+pub struct InitUserVolumeAccumulatorBuilder {
+    payer: Option<solana_pubkey::Pubkey>,
+    user: Option<solana_pubkey::Pubkey>,
+    user_volume_accumulator: Option<solana_pubkey::Pubkey>,
+    system_program: Option<solana_pubkey::Pubkey>,
     event_authority: Option<solana_pubkey::Pubkey>,
     program: Option<solana_pubkey::Pubkey>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
-impl UpdateGlobalAuthorityBuilder {
+impl InitUserVolumeAccumulatorBuilder {
     pub fn new() -> Self {
         Self::default()
     }
     #[inline(always)]
-    pub fn global(&mut self, global: solana_pubkey::Pubkey) -> &mut Self {
-        self.global = Some(global);
+    pub fn payer(&mut self, payer: solana_pubkey::Pubkey) -> &mut Self {
+        self.payer = Some(payer);
         self
     }
     #[inline(always)]
-    pub fn authority(&mut self, authority: solana_pubkey::Pubkey) -> &mut Self {
-        self.authority = Some(authority);
+    pub fn user(&mut self, user: solana_pubkey::Pubkey) -> &mut Self {
+        self.user = Some(user);
         self
     }
     #[inline(always)]
-    pub fn new_authority(&mut self, new_authority: solana_pubkey::Pubkey) -> &mut Self {
-        self.new_authority = Some(new_authority);
+    pub fn user_volume_accumulator(
+        &mut self,
+        user_volume_accumulator: solana_pubkey::Pubkey,
+    ) -> &mut Self {
+        self.user_volume_accumulator = Some(user_volume_accumulator);
+        self
+    }
+    /// `[optional account, default to '11111111111111111111111111111111']`
+    #[inline(always)]
+    pub fn system_program(&mut self, system_program: solana_pubkey::Pubkey) -> &mut Self {
+        self.system_program = Some(system_program);
         self
     }
     #[inline(always)]
@@ -154,10 +171,15 @@ impl UpdateGlobalAuthorityBuilder {
     }
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
-        let accounts = UpdateGlobalAuthority {
-            global: self.global.expect("global is not set"),
-            authority: self.authority.expect("authority is not set"),
-            new_authority: self.new_authority.expect("new_authority is not set"),
+        let accounts = InitUserVolumeAccumulator {
+            payer: self.payer.expect("payer is not set"),
+            user: self.user.expect("user is not set"),
+            user_volume_accumulator: self
+                .user_volume_accumulator
+                .expect("user_volume_accumulator is not set"),
+            system_program: self
+                .system_program
+                .unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
             event_authority: self.event_authority.expect("event_authority is not set"),
             program: self.program.expect("program is not set"),
         };
@@ -166,45 +188,50 @@ impl UpdateGlobalAuthorityBuilder {
     }
 }
 
-/// `update_global_authority` CPI accounts.
-pub struct UpdateGlobalAuthorityCpiAccounts<'a, 'b> {
-    pub global: &'b solana_account_info::AccountInfo<'a>,
+/// `init_user_volume_accumulator` CPI accounts.
+pub struct InitUserVolumeAccumulatorCpiAccounts<'a, 'b> {
+    pub payer: &'b solana_account_info::AccountInfo<'a>,
 
-    pub authority: &'b solana_account_info::AccountInfo<'a>,
+    pub user: &'b solana_account_info::AccountInfo<'a>,
 
-    pub new_authority: &'b solana_account_info::AccountInfo<'a>,
+    pub user_volume_accumulator: &'b solana_account_info::AccountInfo<'a>,
+
+    pub system_program: &'b solana_account_info::AccountInfo<'a>,
 
     pub event_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
 }
 
-/// `update_global_authority` CPI instruction.
-pub struct UpdateGlobalAuthorityCpi<'a, 'b> {
+/// `init_user_volume_accumulator` CPI instruction.
+pub struct InitUserVolumeAccumulatorCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
-    pub global: &'b solana_account_info::AccountInfo<'a>,
+    pub payer: &'b solana_account_info::AccountInfo<'a>,
 
-    pub authority: &'b solana_account_info::AccountInfo<'a>,
+    pub user: &'b solana_account_info::AccountInfo<'a>,
 
-    pub new_authority: &'b solana_account_info::AccountInfo<'a>,
+    pub user_volume_accumulator: &'b solana_account_info::AccountInfo<'a>,
+
+    pub system_program: &'b solana_account_info::AccountInfo<'a>,
 
     pub event_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
 }
 
-impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
+impl<'a, 'b> InitUserVolumeAccumulatorCpi<'a, 'b> {
     pub fn new(
         program: &'b solana_account_info::AccountInfo<'a>,
-        accounts: UpdateGlobalAuthorityCpiAccounts<'a, 'b>,
+        accounts: InitUserVolumeAccumulatorCpiAccounts<'a, 'b>,
     ) -> Self {
         Self {
             __program: program,
-            global: accounts.global,
-            authority: accounts.authority,
-            new_authority: accounts.new_authority,
+            payer: accounts.payer,
+            user: accounts.user,
+            user_volume_accumulator: accounts.user_volume_accumulator,
+            system_program: accounts.system_program,
             event_authority: accounts.event_authority,
             program: accounts.program,
         }
@@ -232,17 +259,18 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(6 + remaining_accounts.len());
+        accounts.push(solana_instruction::AccountMeta::new(*self.payer.key, true));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.user.key,
+            false,
+        ));
         accounts.push(solana_instruction::AccountMeta::new(
-            *self.global.key,
+            *self.user_volume_accumulator.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.authority.key,
-            true,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.new_authority.key,
+            *self.system_program.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -260,7 +288,7 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
                 is_writable: remaining_account.2,
             })
         });
-        let data = UpdateGlobalAuthorityInstructionData::new()
+        let data = InitUserVolumeAccumulatorInstructionData::new()
             .try_to_vec()
             .unwrap();
 
@@ -269,11 +297,12 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(6 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(7 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
-        account_infos.push(self.global.clone());
-        account_infos.push(self.authority.clone());
-        account_infos.push(self.new_authority.clone());
+        account_infos.push(self.payer.clone());
+        account_infos.push(self.user.clone());
+        account_infos.push(self.user_volume_accumulator.clone());
+        account_infos.push(self.system_program.clone());
         account_infos.push(self.event_authority.clone());
         account_infos.push(self.program.clone());
         remaining_accounts
@@ -288,27 +317,29 @@ impl<'a, 'b> UpdateGlobalAuthorityCpi<'a, 'b> {
     }
 }
 
-/// Instruction builder for `UpdateGlobalAuthority` via CPI.
+/// Instruction builder for `InitUserVolumeAccumulator` via CPI.
 ///
 /// ### Accounts:
 ///
-///   0. `[writable]` global
-///   1. `[signer]` authority
-///   2. `[]` new_authority
-///   3. `[]` event_authority
-///   4. `[]` program
+///   0. `[writable, signer]` payer
+///   1. `[]` user
+///   2. `[writable]` user_volume_accumulator
+///   3. `[]` system_program
+///   4. `[]` event_authority
+///   5. `[]` program
 #[derive(Clone, Debug)]
-pub struct UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
-    instruction: Box<UpdateGlobalAuthorityCpiBuilderInstruction<'a, 'b>>,
+pub struct InitUserVolumeAccumulatorCpiBuilder<'a, 'b> {
+    instruction: Box<InitUserVolumeAccumulatorCpiBuilderInstruction<'a, 'b>>,
 }
 
-impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
+impl<'a, 'b> InitUserVolumeAccumulatorCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
-        let instruction = Box::new(UpdateGlobalAuthorityCpiBuilderInstruction {
+        let instruction = Box::new(InitUserVolumeAccumulatorCpiBuilderInstruction {
             __program: program,
-            global: None,
-            authority: None,
-            new_authority: None,
+            payer: None,
+            user: None,
+            user_volume_accumulator: None,
+            system_program: None,
             event_authority: None,
             program: None,
             __remaining_accounts: Vec::new(),
@@ -316,21 +347,29 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
         Self { instruction }
     }
     #[inline(always)]
-    pub fn global(&mut self, global: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-        self.instruction.global = Some(global);
+    pub fn payer(&mut self, payer: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+        self.instruction.payer = Some(payer);
         self
     }
     #[inline(always)]
-    pub fn authority(&mut self, authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-        self.instruction.authority = Some(authority);
+    pub fn user(&mut self, user: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+        self.instruction.user = Some(user);
         self
     }
     #[inline(always)]
-    pub fn new_authority(
+    pub fn user_volume_accumulator(
         &mut self,
-        new_authority: &'b solana_account_info::AccountInfo<'a>,
+        user_volume_accumulator: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
-        self.instruction.new_authority = Some(new_authority);
+        self.instruction.user_volume_accumulator = Some(user_volume_accumulator);
+        self
+    }
+    #[inline(always)]
+    pub fn system_program(
+        &mut self,
+        system_program: &'b solana_account_info::AccountInfo<'a>,
+    ) -> &mut Self {
+        self.instruction.system_program = Some(system_program);
         self
     }
     #[inline(always)]
@@ -380,17 +419,22 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
     #[allow(clippy::clone_on_copy)]
     #[allow(clippy::vec_init_then_push)]
     pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
-        let instruction = UpdateGlobalAuthorityCpi {
+        let instruction = InitUserVolumeAccumulatorCpi {
             __program: self.instruction.__program,
 
-            global: self.instruction.global.expect("global is not set"),
+            payer: self.instruction.payer.expect("payer is not set"),
 
-            authority: self.instruction.authority.expect("authority is not set"),
+            user: self.instruction.user.expect("user is not set"),
 
-            new_authority: self
+            user_volume_accumulator: self
                 .instruction
-                .new_authority
-                .expect("new_authority is not set"),
+                .user_volume_accumulator
+                .expect("user_volume_accumulator is not set"),
+
+            system_program: self
+                .instruction
+                .system_program
+                .expect("system_program is not set"),
 
             event_authority: self
                 .instruction
@@ -407,11 +451,12 @@ impl<'a, 'b> UpdateGlobalAuthorityCpiBuilder<'a, 'b> {
 }
 
 #[derive(Clone, Debug)]
-struct UpdateGlobalAuthorityCpiBuilderInstruction<'a, 'b> {
+struct InitUserVolumeAccumulatorCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
-    global: Option<&'b solana_account_info::AccountInfo<'a>>,
-    authority: Option<&'b solana_account_info::AccountInfo<'a>>,
-    new_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+    payer: Option<&'b solana_account_info::AccountInfo<'a>>,
+    user: Option<&'b solana_account_info::AccountInfo<'a>>,
+    user_volume_accumulator: Option<&'b solana_account_info::AccountInfo<'a>>,
+    system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
     event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
     program: Option<&'b solana_account_info::AccountInfo<'a>>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.

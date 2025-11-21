@@ -8,82 +8,70 @@
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 
-pub const SELL_DISCRIMINATOR: [u8; 8] = [51, 230, 133, 164, 1, 127, 131, 173];
+pub const ADMIN_UPDATE_TOKEN_INCENTIVES_DISCRIMINATOR: [u8; 8] =
+    [209, 11, 115, 87, 213, 23, 124, 204];
 
 /// Accounts.
 #[derive(Debug)]
-pub struct Sell {
+pub struct AdminUpdateTokenIncentives {
+    pub authority: solana_pubkey::Pubkey,
+
     pub global: solana_pubkey::Pubkey,
 
-    pub fee_recipient: solana_pubkey::Pubkey,
+    pub global_volume_accumulator: solana_pubkey::Pubkey,
 
     pub mint: solana_pubkey::Pubkey,
 
-    pub bonding_curve: solana_pubkey::Pubkey,
+    pub global_incentive_token_account: solana_pubkey::Pubkey,
 
-    pub associated_bonding_curve: solana_pubkey::Pubkey,
-
-    pub associated_user: solana_pubkey::Pubkey,
-
-    pub user: solana_pubkey::Pubkey,
+    pub associated_token_program: solana_pubkey::Pubkey,
 
     pub system_program: solana_pubkey::Pubkey,
-
-    pub creator_vault: solana_pubkey::Pubkey,
 
     pub token_program: solana_pubkey::Pubkey,
 
     pub event_authority: solana_pubkey::Pubkey,
 
     pub program: solana_pubkey::Pubkey,
-
-    pub fee_config: solana_pubkey::Pubkey,
-
-    pub fee_program: solana_pubkey::Pubkey,
 }
 
-impl Sell {
-    pub fn instruction(&self, args: SellInstructionArgs) -> solana_instruction::Instruction {
+impl AdminUpdateTokenIncentives {
+    pub fn instruction(
+        &self,
+        args: AdminUpdateTokenIncentivesInstructionArgs,
+    ) -> solana_instruction::Instruction {
         self.instruction_with_remaining_accounts(args, &[])
     }
     #[allow(clippy::arithmetic_side_effects)]
     #[allow(clippy::vec_init_then_push)]
     pub fn instruction_with_remaining_accounts(
         &self,
-        args: SellInstructionArgs,
+        args: AdminUpdateTokenIncentivesInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(14 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(10 + remaining_accounts.len());
+        accounts.push(solana_instruction::AccountMeta::new(self.authority, true));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.global,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
-            self.fee_recipient,
+            self.global_volume_accumulator,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.mint, false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
-            self.bonding_curve,
+            self.global_incentive_token_account,
             false,
         ));
-        accounts.push(solana_instruction::AccountMeta::new(
-            self.associated_bonding_curve,
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.associated_token_program,
             false,
         ));
-        accounts.push(solana_instruction::AccountMeta::new(
-            self.associated_user,
-            false,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new(self.user, true));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.system_program,
-            false,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new(
-            self.creator_vault,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -98,16 +86,10 @@ impl Sell {
             self.program,
             false,
         ));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.fee_config,
-            false,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.fee_program,
-            false,
-        ));
         accounts.extend_from_slice(remaining_accounts);
-        let mut data = SellInstructionData::new().try_to_vec().unwrap();
+        let mut data = AdminUpdateTokenIncentivesInstructionData::new()
+            .try_to_vec()
+            .unwrap();
         let mut args = args.try_to_vec().unwrap();
         data.append(&mut args);
 
@@ -121,14 +103,14 @@ impl Sell {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct SellInstructionData {
+pub struct AdminUpdateTokenIncentivesInstructionData {
     discriminator: [u8; 8],
 }
 
-impl SellInstructionData {
+impl AdminUpdateTokenIncentivesInstructionData {
     pub fn new() -> Self {
         Self {
-            discriminator: [51, 230, 133, 164, 1, 127, 131, 173],
+            discriminator: [209, 11, 115, 87, 213, 23, 124, 204],
         }
     }
 
@@ -137,7 +119,7 @@ impl SellInstructionData {
     }
 }
 
-impl Default for SellInstructionData {
+impl Default for AdminUpdateTokenIncentivesInstructionData {
     fn default() -> Self {
         Self::new()
     }
@@ -145,59 +127,62 @@ impl Default for SellInstructionData {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct SellInstructionArgs {
-    pub amount: u64,
-    pub min_sol_output: u64,
+pub struct AdminUpdateTokenIncentivesInstructionArgs {
+    pub start_time: i64,
+    pub end_time: i64,
+    pub seconds_in_a_day: i64,
+    pub day_number: u64,
+    pub pump_token_supply_per_day: u64,
 }
 
-impl SellInstructionArgs {
+impl AdminUpdateTokenIncentivesInstructionArgs {
     pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
         borsh::to_vec(self)
     }
 }
 
-/// Instruction builder for `Sell`.
+/// Instruction builder for `AdminUpdateTokenIncentives`.
 ///
 /// ### Accounts:
 ///
-///   0. `[]` global
-///   1. `[writable]` fee_recipient
-///   2. `[]` mint
-///   3. `[writable]` bonding_curve
-///   4. `[writable]` associated_bonding_curve
-///   5. `[writable]` associated_user
-///   6. `[writable, signer]` user
-///   7. `[optional]` system_program (default to `11111111111111111111111111111111`)
-///   8. `[writable]` creator_vault
-///   9. `[optional]` token_program (default to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
-///   10. `[]` event_authority
-///   11. `[optional]` program (default to `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`)
-///   12. `[]` fee_config
-///   13. `[optional]` fee_program (default to `pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ`)
+///   0. `[writable, signer]` authority
+///   1. `[]` global
+///   2. `[writable]` global_volume_accumulator
+///   3. `[]` mint
+///   4. `[writable]` global_incentive_token_account
+///   5. `[optional]` associated_token_program (default to `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL`)
+///   6. `[optional]` system_program (default to `11111111111111111111111111111111`)
+///   7. `[optional]` token_program (default to `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
+///   8. `[]` event_authority
+///   9. `[]` program
 #[derive(Clone, Debug, Default)]
-pub struct SellBuilder {
+pub struct AdminUpdateTokenIncentivesBuilder {
+    authority: Option<solana_pubkey::Pubkey>,
     global: Option<solana_pubkey::Pubkey>,
-    fee_recipient: Option<solana_pubkey::Pubkey>,
+    global_volume_accumulator: Option<solana_pubkey::Pubkey>,
     mint: Option<solana_pubkey::Pubkey>,
-    bonding_curve: Option<solana_pubkey::Pubkey>,
-    associated_bonding_curve: Option<solana_pubkey::Pubkey>,
-    associated_user: Option<solana_pubkey::Pubkey>,
-    user: Option<solana_pubkey::Pubkey>,
+    global_incentive_token_account: Option<solana_pubkey::Pubkey>,
+    associated_token_program: Option<solana_pubkey::Pubkey>,
     system_program: Option<solana_pubkey::Pubkey>,
-    creator_vault: Option<solana_pubkey::Pubkey>,
     token_program: Option<solana_pubkey::Pubkey>,
     event_authority: Option<solana_pubkey::Pubkey>,
     program: Option<solana_pubkey::Pubkey>,
-    fee_config: Option<solana_pubkey::Pubkey>,
-    fee_program: Option<solana_pubkey::Pubkey>,
-    amount: Option<u64>,
-    min_sol_output: Option<u64>,
+    start_time: Option<i64>,
+    end_time: Option<i64>,
+    seconds_in_a_day: Option<i64>,
+    day_number: Option<u64>,
+    pump_token_supply_per_day: Option<u64>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
-impl SellBuilder {
+impl AdminUpdateTokenIncentivesBuilder {
     pub fn new() -> Self {
         Self::default()
+    }
+    #[inline(always)]
+    pub fn authority(&mut self, authority: solana_pubkey::Pubkey) -> &mut Self {
+        self.authority = Some(authority);
+        self
     }
     #[inline(always)]
     pub fn global(&mut self, global: solana_pubkey::Pubkey) -> &mut Self {
@@ -205,8 +190,11 @@ impl SellBuilder {
         self
     }
     #[inline(always)]
-    pub fn fee_recipient(&mut self, fee_recipient: solana_pubkey::Pubkey) -> &mut Self {
-        self.fee_recipient = Some(fee_recipient);
+    pub fn global_volume_accumulator(
+        &mut self,
+        global_volume_accumulator: solana_pubkey::Pubkey,
+    ) -> &mut Self {
+        self.global_volume_accumulator = Some(global_volume_accumulator);
         self
     }
     #[inline(always)]
@@ -215,37 +203,26 @@ impl SellBuilder {
         self
     }
     #[inline(always)]
-    pub fn bonding_curve(&mut self, bonding_curve: solana_pubkey::Pubkey) -> &mut Self {
-        self.bonding_curve = Some(bonding_curve);
-        self
-    }
-    #[inline(always)]
-    pub fn associated_bonding_curve(
+    pub fn global_incentive_token_account(
         &mut self,
-        associated_bonding_curve: solana_pubkey::Pubkey,
+        global_incentive_token_account: solana_pubkey::Pubkey,
     ) -> &mut Self {
-        self.associated_bonding_curve = Some(associated_bonding_curve);
+        self.global_incentive_token_account = Some(global_incentive_token_account);
         self
     }
+    /// `[optional account, default to 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL']`
     #[inline(always)]
-    pub fn associated_user(&mut self, associated_user: solana_pubkey::Pubkey) -> &mut Self {
-        self.associated_user = Some(associated_user);
-        self
-    }
-    #[inline(always)]
-    pub fn user(&mut self, user: solana_pubkey::Pubkey) -> &mut Self {
-        self.user = Some(user);
+    pub fn associated_token_program(
+        &mut self,
+        associated_token_program: solana_pubkey::Pubkey,
+    ) -> &mut Self {
+        self.associated_token_program = Some(associated_token_program);
         self
     }
     /// `[optional account, default to '11111111111111111111111111111111']`
     #[inline(always)]
     pub fn system_program(&mut self, system_program: solana_pubkey::Pubkey) -> &mut Self {
         self.system_program = Some(system_program);
-        self
-    }
-    #[inline(always)]
-    pub fn creator_vault(&mut self, creator_vault: solana_pubkey::Pubkey) -> &mut Self {
-        self.creator_vault = Some(creator_vault);
         self
     }
     /// `[optional account, default to 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA']`
@@ -259,31 +236,34 @@ impl SellBuilder {
         self.event_authority = Some(event_authority);
         self
     }
-    /// `[optional account, default to '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P']`
     #[inline(always)]
     pub fn program(&mut self, program: solana_pubkey::Pubkey) -> &mut Self {
         self.program = Some(program);
         self
     }
     #[inline(always)]
-    pub fn fee_config(&mut self, fee_config: solana_pubkey::Pubkey) -> &mut Self {
-        self.fee_config = Some(fee_config);
-        self
-    }
-    /// `[optional account, default to 'pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ']`
-    #[inline(always)]
-    pub fn fee_program(&mut self, fee_program: solana_pubkey::Pubkey) -> &mut Self {
-        self.fee_program = Some(fee_program);
+    pub fn start_time(&mut self, start_time: i64) -> &mut Self {
+        self.start_time = Some(start_time);
         self
     }
     #[inline(always)]
-    pub fn amount(&mut self, amount: u64) -> &mut Self {
-        self.amount = Some(amount);
+    pub fn end_time(&mut self, end_time: i64) -> &mut Self {
+        self.end_time = Some(end_time);
         self
     }
     #[inline(always)]
-    pub fn min_sol_output(&mut self, min_sol_output: u64) -> &mut Self {
-        self.min_sol_output = Some(min_sol_output);
+    pub fn seconds_in_a_day(&mut self, seconds_in_a_day: i64) -> &mut Self {
+        self.seconds_in_a_day = Some(seconds_in_a_day);
+        self
+    }
+    #[inline(always)]
+    pub fn day_number(&mut self, day_number: u64) -> &mut Self {
+        self.day_number = Some(day_number);
+        self
+    }
+    #[inline(always)]
+    pub fn pump_token_supply_per_day(&mut self, pump_token_supply_per_day: u64) -> &mut Self {
+        self.pump_token_supply_per_day = Some(pump_token_supply_per_day);
         self
     }
     /// Add an additional account to the instruction.
@@ -303,133 +283,115 @@ impl SellBuilder {
     }
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
-        let accounts = Sell {
+        let accounts = AdminUpdateTokenIncentives {
+            authority: self.authority.expect("authority is not set"),
             global: self.global.expect("global is not set"),
-            fee_recipient: self.fee_recipient.expect("fee_recipient is not set"),
+            global_volume_accumulator: self
+                .global_volume_accumulator
+                .expect("global_volume_accumulator is not set"),
             mint: self.mint.expect("mint is not set"),
-            bonding_curve: self.bonding_curve.expect("bonding_curve is not set"),
-            associated_bonding_curve: self
-                .associated_bonding_curve
-                .expect("associated_bonding_curve is not set"),
-            associated_user: self.associated_user.expect("associated_user is not set"),
-            user: self.user.expect("user is not set"),
+            global_incentive_token_account: self
+                .global_incentive_token_account
+                .expect("global_incentive_token_account is not set"),
+            associated_token_program: self.associated_token_program.unwrap_or(
+                solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+            ),
             system_program: self
                 .system_program
                 .unwrap_or(solana_pubkey::pubkey!("11111111111111111111111111111111")),
-            creator_vault: self.creator_vault.expect("creator_vault is not set"),
             token_program: self.token_program.unwrap_or(solana_pubkey::pubkey!(
                 "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
             )),
             event_authority: self.event_authority.expect("event_authority is not set"),
-            program: self.program.unwrap_or(solana_pubkey::pubkey!(
-                "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
-            )),
-            fee_config: self.fee_config.expect("fee_config is not set"),
-            fee_program: self.fee_program.unwrap_or(solana_pubkey::pubkey!(
-                "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
-            )),
+            program: self.program.expect("program is not set"),
         };
-        let args = SellInstructionArgs {
-            amount: self.amount.clone().expect("amount is not set"),
-            min_sol_output: self
-                .min_sol_output
+        let args = AdminUpdateTokenIncentivesInstructionArgs {
+            start_time: self.start_time.clone().expect("start_time is not set"),
+            end_time: self.end_time.clone().expect("end_time is not set"),
+            seconds_in_a_day: self
+                .seconds_in_a_day
                 .clone()
-                .expect("min_sol_output is not set"),
+                .expect("seconds_in_a_day is not set"),
+            day_number: self.day_number.clone().expect("day_number is not set"),
+            pump_token_supply_per_day: self
+                .pump_token_supply_per_day
+                .clone()
+                .expect("pump_token_supply_per_day is not set"),
         };
 
         accounts.instruction_with_remaining_accounts(args, &self.__remaining_accounts)
     }
 }
 
-/// `sell` CPI accounts.
-pub struct SellCpiAccounts<'a, 'b> {
+/// `admin_update_token_incentives` CPI accounts.
+pub struct AdminUpdateTokenIncentivesCpiAccounts<'a, 'b> {
+    pub authority: &'b solana_account_info::AccountInfo<'a>,
+
     pub global: &'b solana_account_info::AccountInfo<'a>,
 
-    pub fee_recipient: &'b solana_account_info::AccountInfo<'a>,
+    pub global_volume_accumulator: &'b solana_account_info::AccountInfo<'a>,
 
     pub mint: &'b solana_account_info::AccountInfo<'a>,
 
-    pub bonding_curve: &'b solana_account_info::AccountInfo<'a>,
+    pub global_incentive_token_account: &'b solana_account_info::AccountInfo<'a>,
 
-    pub associated_bonding_curve: &'b solana_account_info::AccountInfo<'a>,
-
-    pub associated_user: &'b solana_account_info::AccountInfo<'a>,
-
-    pub user: &'b solana_account_info::AccountInfo<'a>,
+    pub associated_token_program: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: &'b solana_account_info::AccountInfo<'a>,
-
-    pub creator_vault: &'b solana_account_info::AccountInfo<'a>,
 
     pub token_program: &'b solana_account_info::AccountInfo<'a>,
 
     pub event_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
-
-    pub fee_config: &'b solana_account_info::AccountInfo<'a>,
-
-    pub fee_program: &'b solana_account_info::AccountInfo<'a>,
 }
 
-/// `sell` CPI instruction.
-pub struct SellCpi<'a, 'b> {
+/// `admin_update_token_incentives` CPI instruction.
+pub struct AdminUpdateTokenIncentivesCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
+    pub authority: &'b solana_account_info::AccountInfo<'a>,
+
     pub global: &'b solana_account_info::AccountInfo<'a>,
 
-    pub fee_recipient: &'b solana_account_info::AccountInfo<'a>,
+    pub global_volume_accumulator: &'b solana_account_info::AccountInfo<'a>,
 
     pub mint: &'b solana_account_info::AccountInfo<'a>,
 
-    pub bonding_curve: &'b solana_account_info::AccountInfo<'a>,
+    pub global_incentive_token_account: &'b solana_account_info::AccountInfo<'a>,
 
-    pub associated_bonding_curve: &'b solana_account_info::AccountInfo<'a>,
-
-    pub associated_user: &'b solana_account_info::AccountInfo<'a>,
-
-    pub user: &'b solana_account_info::AccountInfo<'a>,
+    pub associated_token_program: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: &'b solana_account_info::AccountInfo<'a>,
-
-    pub creator_vault: &'b solana_account_info::AccountInfo<'a>,
 
     pub token_program: &'b solana_account_info::AccountInfo<'a>,
 
     pub event_authority: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
-
-    pub fee_config: &'b solana_account_info::AccountInfo<'a>,
-
-    pub fee_program: &'b solana_account_info::AccountInfo<'a>,
     /// The arguments for the instruction.
-    pub __args: SellInstructionArgs,
+    pub __args: AdminUpdateTokenIncentivesInstructionArgs,
 }
 
-impl<'a, 'b> SellCpi<'a, 'b> {
+impl<'a, 'b> AdminUpdateTokenIncentivesCpi<'a, 'b> {
     pub fn new(
         program: &'b solana_account_info::AccountInfo<'a>,
-        accounts: SellCpiAccounts<'a, 'b>,
-        args: SellInstructionArgs,
+        accounts: AdminUpdateTokenIncentivesCpiAccounts<'a, 'b>,
+        args: AdminUpdateTokenIncentivesInstructionArgs,
     ) -> Self {
         Self {
             __program: program,
+            authority: accounts.authority,
             global: accounts.global,
-            fee_recipient: accounts.fee_recipient,
+            global_volume_accumulator: accounts.global_volume_accumulator,
             mint: accounts.mint,
-            bonding_curve: accounts.bonding_curve,
-            associated_bonding_curve: accounts.associated_bonding_curve,
-            associated_user: accounts.associated_user,
-            user: accounts.user,
+            global_incentive_token_account: accounts.global_incentive_token_account,
+            associated_token_program: accounts.associated_token_program,
             system_program: accounts.system_program,
-            creator_vault: accounts.creator_vault,
             token_program: accounts.token_program,
             event_authority: accounts.event_authority,
             program: accounts.program,
-            fee_config: accounts.fee_config,
-            fee_program: accounts.fee_program,
             __args: args,
         }
     }
@@ -456,13 +418,17 @@ impl<'a, 'b> SellCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(14 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(10 + remaining_accounts.len());
+        accounts.push(solana_instruction::AccountMeta::new(
+            *self.authority.key,
+            true,
+        ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.global.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
-            *self.fee_recipient.key,
+            *self.global_volume_accumulator.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -470,24 +436,15 @@ impl<'a, 'b> SellCpi<'a, 'b> {
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
-            *self.bonding_curve.key,
+            *self.global_incentive_token_account.key,
             false,
         ));
-        accounts.push(solana_instruction::AccountMeta::new(
-            *self.associated_bonding_curve.key,
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.associated_token_program.key,
             false,
         ));
-        accounts.push(solana_instruction::AccountMeta::new(
-            *self.associated_user.key,
-            false,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new(*self.user.key, true));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.system_program.key,
-            false,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new(
-            *self.creator_vault.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -502,14 +459,6 @@ impl<'a, 'b> SellCpi<'a, 'b> {
             *self.program.key,
             false,
         ));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.fee_config.key,
-            false,
-        ));
-        accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.fee_program.key,
-            false,
-        ));
         remaining_accounts.iter().for_each(|remaining_account| {
             accounts.push(solana_instruction::AccountMeta {
                 pubkey: *remaining_account.0.key,
@@ -517,7 +466,9 @@ impl<'a, 'b> SellCpi<'a, 'b> {
                 is_writable: remaining_account.2,
             })
         });
-        let mut data = SellInstructionData::new().try_to_vec().unwrap();
+        let mut data = AdminUpdateTokenIncentivesInstructionData::new()
+            .try_to_vec()
+            .unwrap();
         let mut args = self.__args.try_to_vec().unwrap();
         data.append(&mut args);
 
@@ -526,22 +477,18 @@ impl<'a, 'b> SellCpi<'a, 'b> {
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(15 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(11 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
+        account_infos.push(self.authority.clone());
         account_infos.push(self.global.clone());
-        account_infos.push(self.fee_recipient.clone());
+        account_infos.push(self.global_volume_accumulator.clone());
         account_infos.push(self.mint.clone());
-        account_infos.push(self.bonding_curve.clone());
-        account_infos.push(self.associated_bonding_curve.clone());
-        account_infos.push(self.associated_user.clone());
-        account_infos.push(self.user.clone());
+        account_infos.push(self.global_incentive_token_account.clone());
+        account_infos.push(self.associated_token_program.clone());
         account_infos.push(self.system_program.clone());
-        account_infos.push(self.creator_vault.clone());
         account_infos.push(self.token_program.clone());
         account_infos.push(self.event_authority.clone());
         account_infos.push(self.program.clone());
-        account_infos.push(self.fee_config.clone());
-        account_infos.push(self.fee_program.clone());
         remaining_accounts
             .iter()
             .for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
@@ -554,52 +501,52 @@ impl<'a, 'b> SellCpi<'a, 'b> {
     }
 }
 
-/// Instruction builder for `Sell` via CPI.
+/// Instruction builder for `AdminUpdateTokenIncentives` via CPI.
 ///
 /// ### Accounts:
 ///
-///   0. `[]` global
-///   1. `[writable]` fee_recipient
-///   2. `[]` mint
-///   3. `[writable]` bonding_curve
-///   4. `[writable]` associated_bonding_curve
-///   5. `[writable]` associated_user
-///   6. `[writable, signer]` user
-///   7. `[]` system_program
-///   8. `[writable]` creator_vault
-///   9. `[]` token_program
-///   10. `[]` event_authority
-///   11. `[]` program
-///   12. `[]` fee_config
-///   13. `[]` fee_program
+///   0. `[writable, signer]` authority
+///   1. `[]` global
+///   2. `[writable]` global_volume_accumulator
+///   3. `[]` mint
+///   4. `[writable]` global_incentive_token_account
+///   5. `[]` associated_token_program
+///   6. `[]` system_program
+///   7. `[]` token_program
+///   8. `[]` event_authority
+///   9. `[]` program
 #[derive(Clone, Debug)]
-pub struct SellCpiBuilder<'a, 'b> {
-    instruction: Box<SellCpiBuilderInstruction<'a, 'b>>,
+pub struct AdminUpdateTokenIncentivesCpiBuilder<'a, 'b> {
+    instruction: Box<AdminUpdateTokenIncentivesCpiBuilderInstruction<'a, 'b>>,
 }
 
-impl<'a, 'b> SellCpiBuilder<'a, 'b> {
+impl<'a, 'b> AdminUpdateTokenIncentivesCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
-        let instruction = Box::new(SellCpiBuilderInstruction {
+        let instruction = Box::new(AdminUpdateTokenIncentivesCpiBuilderInstruction {
             __program: program,
+            authority: None,
             global: None,
-            fee_recipient: None,
+            global_volume_accumulator: None,
             mint: None,
-            bonding_curve: None,
-            associated_bonding_curve: None,
-            associated_user: None,
-            user: None,
+            global_incentive_token_account: None,
+            associated_token_program: None,
             system_program: None,
-            creator_vault: None,
             token_program: None,
             event_authority: None,
             program: None,
-            fee_config: None,
-            fee_program: None,
-            amount: None,
-            min_sol_output: None,
+            start_time: None,
+            end_time: None,
+            seconds_in_a_day: None,
+            day_number: None,
+            pump_token_supply_per_day: None,
             __remaining_accounts: Vec::new(),
         });
         Self { instruction }
+    }
+    #[inline(always)]
+    pub fn authority(&mut self, authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+        self.instruction.authority = Some(authority);
+        self
     }
     #[inline(always)]
     pub fn global(&mut self, global: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
@@ -607,11 +554,11 @@ impl<'a, 'b> SellCpiBuilder<'a, 'b> {
         self
     }
     #[inline(always)]
-    pub fn fee_recipient(
+    pub fn global_volume_accumulator(
         &mut self,
-        fee_recipient: &'b solana_account_info::AccountInfo<'a>,
+        global_volume_accumulator: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
-        self.instruction.fee_recipient = Some(fee_recipient);
+        self.instruction.global_volume_accumulator = Some(global_volume_accumulator);
         self
     }
     #[inline(always)]
@@ -620,32 +567,19 @@ impl<'a, 'b> SellCpiBuilder<'a, 'b> {
         self
     }
     #[inline(always)]
-    pub fn bonding_curve(
+    pub fn global_incentive_token_account(
         &mut self,
-        bonding_curve: &'b solana_account_info::AccountInfo<'a>,
+        global_incentive_token_account: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
-        self.instruction.bonding_curve = Some(bonding_curve);
+        self.instruction.global_incentive_token_account = Some(global_incentive_token_account);
         self
     }
     #[inline(always)]
-    pub fn associated_bonding_curve(
+    pub fn associated_token_program(
         &mut self,
-        associated_bonding_curve: &'b solana_account_info::AccountInfo<'a>,
+        associated_token_program: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
-        self.instruction.associated_bonding_curve = Some(associated_bonding_curve);
-        self
-    }
-    #[inline(always)]
-    pub fn associated_user(
-        &mut self,
-        associated_user: &'b solana_account_info::AccountInfo<'a>,
-    ) -> &mut Self {
-        self.instruction.associated_user = Some(associated_user);
-        self
-    }
-    #[inline(always)]
-    pub fn user(&mut self, user: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-        self.instruction.user = Some(user);
+        self.instruction.associated_token_program = Some(associated_token_program);
         self
     }
     #[inline(always)]
@@ -654,14 +588,6 @@ impl<'a, 'b> SellCpiBuilder<'a, 'b> {
         system_program: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
         self.instruction.system_program = Some(system_program);
-        self
-    }
-    #[inline(always)]
-    pub fn creator_vault(
-        &mut self,
-        creator_vault: &'b solana_account_info::AccountInfo<'a>,
-    ) -> &mut Self {
-        self.instruction.creator_vault = Some(creator_vault);
         self
     }
     #[inline(always)]
@@ -686,29 +612,28 @@ impl<'a, 'b> SellCpiBuilder<'a, 'b> {
         self
     }
     #[inline(always)]
-    pub fn fee_config(
-        &mut self,
-        fee_config: &'b solana_account_info::AccountInfo<'a>,
-    ) -> &mut Self {
-        self.instruction.fee_config = Some(fee_config);
+    pub fn start_time(&mut self, start_time: i64) -> &mut Self {
+        self.instruction.start_time = Some(start_time);
         self
     }
     #[inline(always)]
-    pub fn fee_program(
-        &mut self,
-        fee_program: &'b solana_account_info::AccountInfo<'a>,
-    ) -> &mut Self {
-        self.instruction.fee_program = Some(fee_program);
+    pub fn end_time(&mut self, end_time: i64) -> &mut Self {
+        self.instruction.end_time = Some(end_time);
         self
     }
     #[inline(always)]
-    pub fn amount(&mut self, amount: u64) -> &mut Self {
-        self.instruction.amount = Some(amount);
+    pub fn seconds_in_a_day(&mut self, seconds_in_a_day: i64) -> &mut Self {
+        self.instruction.seconds_in_a_day = Some(seconds_in_a_day);
         self
     }
     #[inline(always)]
-    pub fn min_sol_output(&mut self, min_sol_output: u64) -> &mut Self {
-        self.instruction.min_sol_output = Some(min_sol_output);
+    pub fn day_number(&mut self, day_number: u64) -> &mut Self {
+        self.instruction.day_number = Some(day_number);
+        self
+    }
+    #[inline(always)]
+    pub fn pump_token_supply_per_day(&mut self, pump_token_supply_per_day: u64) -> &mut Self {
+        self.instruction.pump_token_supply_per_day = Some(pump_token_supply_per_day);
         self
     }
     /// Add an additional account to the instruction.
@@ -745,52 +670,61 @@ impl<'a, 'b> SellCpiBuilder<'a, 'b> {
     #[allow(clippy::clone_on_copy)]
     #[allow(clippy::vec_init_then_push)]
     pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
-        let args = SellInstructionArgs {
-            amount: self.instruction.amount.clone().expect("amount is not set"),
-            min_sol_output: self
+        let args = AdminUpdateTokenIncentivesInstructionArgs {
+            start_time: self
                 .instruction
-                .min_sol_output
+                .start_time
                 .clone()
-                .expect("min_sol_output is not set"),
+                .expect("start_time is not set"),
+            end_time: self
+                .instruction
+                .end_time
+                .clone()
+                .expect("end_time is not set"),
+            seconds_in_a_day: self
+                .instruction
+                .seconds_in_a_day
+                .clone()
+                .expect("seconds_in_a_day is not set"),
+            day_number: self
+                .instruction
+                .day_number
+                .clone()
+                .expect("day_number is not set"),
+            pump_token_supply_per_day: self
+                .instruction
+                .pump_token_supply_per_day
+                .clone()
+                .expect("pump_token_supply_per_day is not set"),
         };
-        let instruction = SellCpi {
+        let instruction = AdminUpdateTokenIncentivesCpi {
             __program: self.instruction.__program,
+
+            authority: self.instruction.authority.expect("authority is not set"),
 
             global: self.instruction.global.expect("global is not set"),
 
-            fee_recipient: self
+            global_volume_accumulator: self
                 .instruction
-                .fee_recipient
-                .expect("fee_recipient is not set"),
+                .global_volume_accumulator
+                .expect("global_volume_accumulator is not set"),
 
             mint: self.instruction.mint.expect("mint is not set"),
 
-            bonding_curve: self
+            global_incentive_token_account: self
                 .instruction
-                .bonding_curve
-                .expect("bonding_curve is not set"),
+                .global_incentive_token_account
+                .expect("global_incentive_token_account is not set"),
 
-            associated_bonding_curve: self
+            associated_token_program: self
                 .instruction
-                .associated_bonding_curve
-                .expect("associated_bonding_curve is not set"),
-
-            associated_user: self
-                .instruction
-                .associated_user
-                .expect("associated_user is not set"),
-
-            user: self.instruction.user.expect("user is not set"),
+                .associated_token_program
+                .expect("associated_token_program is not set"),
 
             system_program: self
                 .instruction
                 .system_program
                 .expect("system_program is not set"),
-
-            creator_vault: self
-                .instruction
-                .creator_vault
-                .expect("creator_vault is not set"),
 
             token_program: self
                 .instruction
@@ -803,13 +737,6 @@ impl<'a, 'b> SellCpiBuilder<'a, 'b> {
                 .expect("event_authority is not set"),
 
             program: self.instruction.program.expect("program is not set"),
-
-            fee_config: self.instruction.fee_config.expect("fee_config is not set"),
-
-            fee_program: self
-                .instruction
-                .fee_program
-                .expect("fee_program is not set"),
             __args: args,
         };
         instruction.invoke_signed_with_remaining_accounts(
@@ -820,24 +747,23 @@ impl<'a, 'b> SellCpiBuilder<'a, 'b> {
 }
 
 #[derive(Clone, Debug)]
-struct SellCpiBuilderInstruction<'a, 'b> {
+struct AdminUpdateTokenIncentivesCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
+    authority: Option<&'b solana_account_info::AccountInfo<'a>>,
     global: Option<&'b solana_account_info::AccountInfo<'a>>,
-    fee_recipient: Option<&'b solana_account_info::AccountInfo<'a>>,
+    global_volume_accumulator: Option<&'b solana_account_info::AccountInfo<'a>>,
     mint: Option<&'b solana_account_info::AccountInfo<'a>>,
-    bonding_curve: Option<&'b solana_account_info::AccountInfo<'a>>,
-    associated_bonding_curve: Option<&'b solana_account_info::AccountInfo<'a>>,
-    associated_user: Option<&'b solana_account_info::AccountInfo<'a>>,
-    user: Option<&'b solana_account_info::AccountInfo<'a>>,
+    global_incentive_token_account: Option<&'b solana_account_info::AccountInfo<'a>>,
+    associated_token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
     system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
-    creator_vault: Option<&'b solana_account_info::AccountInfo<'a>>,
     token_program: Option<&'b solana_account_info::AccountInfo<'a>>,
     event_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
     program: Option<&'b solana_account_info::AccountInfo<'a>>,
-    fee_config: Option<&'b solana_account_info::AccountInfo<'a>>,
-    fee_program: Option<&'b solana_account_info::AccountInfo<'a>>,
-    amount: Option<u64>,
-    min_sol_output: Option<u64>,
+    start_time: Option<i64>,
+    end_time: Option<i64>,
+    seconds_in_a_day: Option<i64>,
+    day_number: Option<u64>,
+    pump_token_supply_per_day: Option<u64>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

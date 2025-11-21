@@ -9,11 +9,11 @@ use crate::generated::types::OptionBool;
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 
-pub const BUY_DISCRIMINATOR: [u8; 8] = [102, 6, 61, 18, 1, 218, 235, 234];
+pub const BUY_EXACT_SOL_IN_DISCRIMINATOR: [u8; 8] = [56, 252, 116, 8, 158, 223, 205, 95];
 
 /// Accounts.
 #[derive(Debug)]
-pub struct Buy {
+pub struct BuyExactSolIn {
     pub global: solana_pubkey::Pubkey,
 
     pub fee_recipient: solana_pubkey::Pubkey,
@@ -47,15 +47,18 @@ pub struct Buy {
     pub fee_program: solana_pubkey::Pubkey,
 }
 
-impl Buy {
-    pub fn instruction(&self, args: BuyInstructionArgs) -> solana_instruction::Instruction {
+impl BuyExactSolIn {
+    pub fn instruction(
+        &self,
+        args: BuyExactSolInInstructionArgs,
+    ) -> solana_instruction::Instruction {
         self.instruction_with_remaining_accounts(args, &[])
     }
     #[allow(clippy::arithmetic_side_effects)]
     #[allow(clippy::vec_init_then_push)]
     pub fn instruction_with_remaining_accounts(
         &self,
-        args: BuyInstructionArgs,
+        args: BuyExactSolInInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
         let mut accounts = Vec::with_capacity(16 + remaining_accounts.len());
@@ -120,7 +123,7 @@ impl Buy {
             false,
         ));
         accounts.extend_from_slice(remaining_accounts);
-        let mut data = BuyInstructionData::new().try_to_vec().unwrap();
+        let mut data = BuyExactSolInInstructionData::new().try_to_vec().unwrap();
         let mut args = args.try_to_vec().unwrap();
         data.append(&mut args);
 
@@ -134,14 +137,14 @@ impl Buy {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BuyInstructionData {
+pub struct BuyExactSolInInstructionData {
     discriminator: [u8; 8],
 }
 
-impl BuyInstructionData {
+impl BuyExactSolInInstructionData {
     pub fn new() -> Self {
         Self {
-            discriminator: [102, 6, 61, 18, 1, 218, 235, 234],
+            discriminator: [56, 252, 116, 8, 158, 223, 205, 95],
         }
     }
 
@@ -150,7 +153,7 @@ impl BuyInstructionData {
     }
 }
 
-impl Default for BuyInstructionData {
+impl Default for BuyExactSolInInstructionData {
     fn default() -> Self {
         Self::new()
     }
@@ -158,19 +161,19 @@ impl Default for BuyInstructionData {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BuyInstructionArgs {
-    pub amount: u64,
-    pub max_sol_cost: u64,
+pub struct BuyExactSolInInstructionArgs {
+    pub spendable_sol_in: u64,
+    pub min_tokens_out: u64,
     pub track_volume: OptionBool,
 }
 
-impl BuyInstructionArgs {
+impl BuyExactSolInInstructionArgs {
     pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
         borsh::to_vec(self)
     }
 }
 
-/// Instruction builder for `Buy`.
+/// Instruction builder for `BuyExactSolIn`.
 ///
 /// ### Accounts:
 ///
@@ -191,7 +194,7 @@ impl BuyInstructionArgs {
 ///   14. `[]` fee_config
 ///   15. `[optional]` fee_program (default to `pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ`)
 #[derive(Clone, Debug, Default)]
-pub struct BuyBuilder {
+pub struct BuyExactSolInBuilder {
     global: Option<solana_pubkey::Pubkey>,
     fee_recipient: Option<solana_pubkey::Pubkey>,
     mint: Option<solana_pubkey::Pubkey>,
@@ -208,13 +211,13 @@ pub struct BuyBuilder {
     user_volume_accumulator: Option<solana_pubkey::Pubkey>,
     fee_config: Option<solana_pubkey::Pubkey>,
     fee_program: Option<solana_pubkey::Pubkey>,
-    amount: Option<u64>,
-    max_sol_cost: Option<u64>,
+    spendable_sol_in: Option<u64>,
+    min_tokens_out: Option<u64>,
     track_volume: Option<OptionBool>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
-impl BuyBuilder {
+impl BuyExactSolInBuilder {
     pub fn new() -> Self {
         Self::default()
     }
@@ -312,13 +315,13 @@ impl BuyBuilder {
         self
     }
     #[inline(always)]
-    pub fn amount(&mut self, amount: u64) -> &mut Self {
-        self.amount = Some(amount);
+    pub fn spendable_sol_in(&mut self, spendable_sol_in: u64) -> &mut Self {
+        self.spendable_sol_in = Some(spendable_sol_in);
         self
     }
     #[inline(always)]
-    pub fn max_sol_cost(&mut self, max_sol_cost: u64) -> &mut Self {
-        self.max_sol_cost = Some(max_sol_cost);
+    pub fn min_tokens_out(&mut self, min_tokens_out: u64) -> &mut Self {
+        self.min_tokens_out = Some(min_tokens_out);
         self
     }
     #[inline(always)]
@@ -343,7 +346,7 @@ impl BuyBuilder {
     }
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
-        let accounts = Buy {
+        let accounts = BuyExactSolIn {
             global: self.global.expect("global is not set"),
             fee_recipient: self.fee_recipient.expect("fee_recipient is not set"),
             mint: self.mint.expect("mint is not set"),
@@ -375,9 +378,15 @@ impl BuyBuilder {
                 "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
             )),
         };
-        let args = BuyInstructionArgs {
-            amount: self.amount.clone().expect("amount is not set"),
-            max_sol_cost: self.max_sol_cost.clone().expect("max_sol_cost is not set"),
+        let args = BuyExactSolInInstructionArgs {
+            spendable_sol_in: self
+                .spendable_sol_in
+                .clone()
+                .expect("spendable_sol_in is not set"),
+            min_tokens_out: self
+                .min_tokens_out
+                .clone()
+                .expect("min_tokens_out is not set"),
             track_volume: self.track_volume.clone().expect("track_volume is not set"),
         };
 
@@ -385,8 +394,8 @@ impl BuyBuilder {
     }
 }
 
-/// `buy` CPI accounts.
-pub struct BuyCpiAccounts<'a, 'b> {
+/// `buy_exact_sol_in` CPI accounts.
+pub struct BuyExactSolInCpiAccounts<'a, 'b> {
     pub global: &'b solana_account_info::AccountInfo<'a>,
 
     pub fee_recipient: &'b solana_account_info::AccountInfo<'a>,
@@ -420,8 +429,8 @@ pub struct BuyCpiAccounts<'a, 'b> {
     pub fee_program: &'b solana_account_info::AccountInfo<'a>,
 }
 
-/// `buy` CPI instruction.
-pub struct BuyCpi<'a, 'b> {
+/// `buy_exact_sol_in` CPI instruction.
+pub struct BuyExactSolInCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
@@ -457,14 +466,14 @@ pub struct BuyCpi<'a, 'b> {
 
     pub fee_program: &'b solana_account_info::AccountInfo<'a>,
     /// The arguments for the instruction.
-    pub __args: BuyInstructionArgs,
+    pub __args: BuyExactSolInInstructionArgs,
 }
 
-impl<'a, 'b> BuyCpi<'a, 'b> {
+impl<'a, 'b> BuyExactSolInCpi<'a, 'b> {
     pub fn new(
         program: &'b solana_account_info::AccountInfo<'a>,
-        accounts: BuyCpiAccounts<'a, 'b>,
-        args: BuyInstructionArgs,
+        accounts: BuyExactSolInCpiAccounts<'a, 'b>,
+        args: BuyExactSolInInstructionArgs,
     ) -> Self {
         Self {
             __program: program,
@@ -579,7 +588,7 @@ impl<'a, 'b> BuyCpi<'a, 'b> {
                 is_writable: remaining_account.2,
             })
         });
-        let mut data = BuyInstructionData::new().try_to_vec().unwrap();
+        let mut data = BuyExactSolInInstructionData::new().try_to_vec().unwrap();
         let mut args = self.__args.try_to_vec().unwrap();
         data.append(&mut args);
 
@@ -618,7 +627,7 @@ impl<'a, 'b> BuyCpi<'a, 'b> {
     }
 }
 
-/// Instruction builder for `Buy` via CPI.
+/// Instruction builder for `BuyExactSolIn` via CPI.
 ///
 /// ### Accounts:
 ///
@@ -639,13 +648,13 @@ impl<'a, 'b> BuyCpi<'a, 'b> {
 ///   14. `[]` fee_config
 ///   15. `[]` fee_program
 #[derive(Clone, Debug)]
-pub struct BuyCpiBuilder<'a, 'b> {
-    instruction: Box<BuyCpiBuilderInstruction<'a, 'b>>,
+pub struct BuyExactSolInCpiBuilder<'a, 'b> {
+    instruction: Box<BuyExactSolInCpiBuilderInstruction<'a, 'b>>,
 }
 
-impl<'a, 'b> BuyCpiBuilder<'a, 'b> {
+impl<'a, 'b> BuyExactSolInCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
-        let instruction = Box::new(BuyCpiBuilderInstruction {
+        let instruction = Box::new(BuyExactSolInCpiBuilderInstruction {
             __program: program,
             global: None,
             fee_recipient: None,
@@ -663,8 +672,8 @@ impl<'a, 'b> BuyCpiBuilder<'a, 'b> {
             user_volume_accumulator: None,
             fee_config: None,
             fee_program: None,
-            amount: None,
-            max_sol_cost: None,
+            spendable_sol_in: None,
+            min_tokens_out: None,
             track_volume: None,
             __remaining_accounts: Vec::new(),
         });
@@ -787,13 +796,13 @@ impl<'a, 'b> BuyCpiBuilder<'a, 'b> {
         self
     }
     #[inline(always)]
-    pub fn amount(&mut self, amount: u64) -> &mut Self {
-        self.instruction.amount = Some(amount);
+    pub fn spendable_sol_in(&mut self, spendable_sol_in: u64) -> &mut Self {
+        self.instruction.spendable_sol_in = Some(spendable_sol_in);
         self
     }
     #[inline(always)]
-    pub fn max_sol_cost(&mut self, max_sol_cost: u64) -> &mut Self {
-        self.instruction.max_sol_cost = Some(max_sol_cost);
+    pub fn min_tokens_out(&mut self, min_tokens_out: u64) -> &mut Self {
+        self.instruction.min_tokens_out = Some(min_tokens_out);
         self
     }
     #[inline(always)]
@@ -835,20 +844,24 @@ impl<'a, 'b> BuyCpiBuilder<'a, 'b> {
     #[allow(clippy::clone_on_copy)]
     #[allow(clippy::vec_init_then_push)]
     pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
-        let args = BuyInstructionArgs {
-            amount: self.instruction.amount.clone().expect("amount is not set"),
-            max_sol_cost: self
+        let args = BuyExactSolInInstructionArgs {
+            spendable_sol_in: self
                 .instruction
-                .max_sol_cost
+                .spendable_sol_in
                 .clone()
-                .expect("max_sol_cost is not set"),
+                .expect("spendable_sol_in is not set"),
+            min_tokens_out: self
+                .instruction
+                .min_tokens_out
+                .clone()
+                .expect("min_tokens_out is not set"),
             track_volume: self
                 .instruction
                 .track_volume
                 .clone()
                 .expect("track_volume is not set"),
         };
-        let instruction = BuyCpi {
+        let instruction = BuyExactSolInCpi {
             __program: self.instruction.__program,
 
             global: self.instruction.global.expect("global is not set"),
@@ -925,7 +938,7 @@ impl<'a, 'b> BuyCpiBuilder<'a, 'b> {
 }
 
 #[derive(Clone, Debug)]
-struct BuyCpiBuilderInstruction<'a, 'b> {
+struct BuyExactSolInCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
     global: Option<&'b solana_account_info::AccountInfo<'a>>,
     fee_recipient: Option<&'b solana_account_info::AccountInfo<'a>>,
@@ -943,8 +956,8 @@ struct BuyCpiBuilderInstruction<'a, 'b> {
     user_volume_accumulator: Option<&'b solana_account_info::AccountInfo<'a>>,
     fee_config: Option<&'b solana_account_info::AccountInfo<'a>>,
     fee_program: Option<&'b solana_account_info::AccountInfo<'a>>,
-    amount: Option<u64>,
-    max_sol_cost: Option<u64>,
+    spendable_sol_in: Option<u64>,
+    min_tokens_out: Option<u64>,
     track_volume: Option<OptionBool>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,

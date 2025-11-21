@@ -11,26 +11,24 @@ use solana_pubkey::Pubkey;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BondingCurve {
+pub struct GlobalVolumeAccumulator {
     pub discriminator: [u8; 8],
-    pub virtual_token_reserves: u64,
-    pub virtual_sol_reserves: u64,
-    pub real_token_reserves: u64,
-    pub real_sol_reserves: u64,
-    pub token_total_supply: u64,
-    pub complete: bool,
+    pub start_time: i64,
+    pub end_time: i64,
+    pub seconds_in_a_day: i64,
     #[cfg_attr(
         feature = "serde",
         serde(with = "serde_with::As::<serde_with::DisplayFromStr>")
     )]
-    pub creator: Pubkey,
-    pub is_mayhem_mode: bool,
+    pub mint: Pubkey,
+    pub total_token_supply: [u64; 30],
+    pub sol_volumes: [u64; 30],
 }
 
-pub const BONDING_CURVE_DISCRIMINATOR: [u8; 8] = [23, 183, 248, 55, 96, 216, 172, 96];
+pub const GLOBAL_VOLUME_ACCUMULATOR_DISCRIMINATOR: [u8; 8] = [202, 42, 246, 43, 142, 190, 30, 255];
 
-impl BondingCurve {
-    pub const LEN: usize = 82;
+impl GlobalVolumeAccumulator {
+    pub const LEN: usize = 544;
 
     #[inline(always)]
     pub fn from_bytes(data: &[u8]) -> Result<Self, std::io::Error> {
@@ -39,7 +37,7 @@ impl BondingCurve {
     }
 }
 
-impl<'a> TryFrom<&solana_account_info::AccountInfo<'a>> for BondingCurve {
+impl<'a> TryFrom<&solana_account_info::AccountInfo<'a>> for GlobalVolumeAccumulator {
     type Error = std::io::Error;
 
     fn try_from(account_info: &solana_account_info::AccountInfo<'a>) -> Result<Self, Self::Error> {
@@ -49,30 +47,31 @@ impl<'a> TryFrom<&solana_account_info::AccountInfo<'a>> for BondingCurve {
 }
 
 #[cfg(feature = "fetch")]
-pub fn fetch_bonding_curve(
+pub fn fetch_global_volume_accumulator(
     rpc: &solana_client::rpc_client::RpcClient,
     address: &solana_pubkey::Pubkey,
-) -> Result<crate::shared::DecodedAccount<BondingCurve>, std::io::Error> {
-    let accounts = fetch_all_bonding_curve(rpc, &[*address])?;
+) -> Result<crate::shared::DecodedAccount<GlobalVolumeAccumulator>, std::io::Error> {
+    let accounts = fetch_all_global_volume_accumulator(rpc, &[*address])?;
     Ok(accounts[0].clone())
 }
 
 #[cfg(feature = "fetch")]
-pub fn fetch_all_bonding_curve(
+pub fn fetch_all_global_volume_accumulator(
     rpc: &solana_client::rpc_client::RpcClient,
     addresses: &[solana_pubkey::Pubkey],
-) -> Result<Vec<crate::shared::DecodedAccount<BondingCurve>>, std::io::Error> {
+) -> Result<Vec<crate::shared::DecodedAccount<GlobalVolumeAccumulator>>, std::io::Error> {
     let accounts = rpc
         .get_multiple_accounts(addresses)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
-    let mut decoded_accounts: Vec<crate::shared::DecodedAccount<BondingCurve>> = Vec::new();
+    let mut decoded_accounts: Vec<crate::shared::DecodedAccount<GlobalVolumeAccumulator>> =
+        Vec::new();
     for i in 0..addresses.len() {
         let address = addresses[i];
         let account = accounts[i].as_ref().ok_or(std::io::Error::new(
             std::io::ErrorKind::Other,
             format!("Account not found: {}", address),
         ))?;
-        let data = BondingCurve::from_bytes(&account.data)?;
+        let data = GlobalVolumeAccumulator::from_bytes(&account.data)?;
         decoded_accounts.push(crate::shared::DecodedAccount {
             address,
             account: account.clone(),
@@ -83,27 +82,28 @@ pub fn fetch_all_bonding_curve(
 }
 
 #[cfg(feature = "fetch")]
-pub fn fetch_maybe_bonding_curve(
+pub fn fetch_maybe_global_volume_accumulator(
     rpc: &solana_client::rpc_client::RpcClient,
     address: &solana_pubkey::Pubkey,
-) -> Result<crate::shared::MaybeAccount<BondingCurve>, std::io::Error> {
-    let accounts = fetch_all_maybe_bonding_curve(rpc, &[*address])?;
+) -> Result<crate::shared::MaybeAccount<GlobalVolumeAccumulator>, std::io::Error> {
+    let accounts = fetch_all_maybe_global_volume_accumulator(rpc, &[*address])?;
     Ok(accounts[0].clone())
 }
 
 #[cfg(feature = "fetch")]
-pub fn fetch_all_maybe_bonding_curve(
+pub fn fetch_all_maybe_global_volume_accumulator(
     rpc: &solana_client::rpc_client::RpcClient,
     addresses: &[solana_pubkey::Pubkey],
-) -> Result<Vec<crate::shared::MaybeAccount<BondingCurve>>, std::io::Error> {
+) -> Result<Vec<crate::shared::MaybeAccount<GlobalVolumeAccumulator>>, std::io::Error> {
     let accounts = rpc
         .get_multiple_accounts(addresses)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
-    let mut decoded_accounts: Vec<crate::shared::MaybeAccount<BondingCurve>> = Vec::new();
+    let mut decoded_accounts: Vec<crate::shared::MaybeAccount<GlobalVolumeAccumulator>> =
+        Vec::new();
     for i in 0..addresses.len() {
         let address = addresses[i];
         if let Some(account) = accounts[i].as_ref() {
-            let data = BondingCurve::from_bytes(&account.data)?;
+            let data = GlobalVolumeAccumulator::from_bytes(&account.data)?;
             decoded_accounts.push(crate::shared::MaybeAccount::Exists(
                 crate::shared::DecodedAccount {
                     address,
@@ -119,26 +119,26 @@ pub fn fetch_all_maybe_bonding_curve(
 }
 
 #[cfg(feature = "anchor")]
-impl anchor_lang::AccountDeserialize for BondingCurve {
+impl anchor_lang::AccountDeserialize for GlobalVolumeAccumulator {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
         Ok(Self::deserialize(buf)?)
     }
 }
 
 #[cfg(feature = "anchor")]
-impl anchor_lang::AccountSerialize for BondingCurve {}
+impl anchor_lang::AccountSerialize for GlobalVolumeAccumulator {}
 
 #[cfg(feature = "anchor")]
-impl anchor_lang::Owner for BondingCurve {
+impl anchor_lang::Owner for GlobalVolumeAccumulator {
     fn owner() -> Pubkey {
         crate::PUMP_ID
     }
 }
 
 #[cfg(feature = "anchor-idl-build")]
-impl anchor_lang::IdlBuild for BondingCurve {}
+impl anchor_lang::IdlBuild for GlobalVolumeAccumulator {}
 
 #[cfg(feature = "anchor-idl-build")]
-impl anchor_lang::Discriminator for BondingCurve {
+impl anchor_lang::Discriminator for GlobalVolumeAccumulator {
     const DISCRIMINATOR: &[u8] = &[0; 8];
 }

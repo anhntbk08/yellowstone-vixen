@@ -11,12 +11,15 @@ use solana_pubkey::Pubkey;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CollectCreatorFeeEvent {
-    pub timestamp: i64,
+pub struct CloseUserVolumeAccumulatorEvent {
     #[cfg_attr(
         feature = "serde",
         serde(with = "serde_with::As::<serde_with::DisplayFromStr>")
     )]
-    pub creator: Pubkey,
-    pub creator_fee: u64,
+    pub user: Pubkey,
+    pub timestamp: i64,
+    pub total_unclaimed_tokens: u64,
+    pub total_claimed_tokens: u64,
+    pub current_sol_volume: u64,
+    pub last_update_timestamp: i64,
 }
