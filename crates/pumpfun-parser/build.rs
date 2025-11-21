@@ -9,11 +9,11 @@ use std::{env, path::PathBuf};
 
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    std::env::set_var("PROTOC", protobuf_src::protoc());
+
     // #[cfg(feature = "proto")]
     prost_build::Config::new()
         .enable_type_names()
         .file_descriptor_set_path(out_dir.join("descriptor.bin"))
-        .compile_protos(&["proto/pumpfun.proto"], &["proto"])
+        .compile_protos(&["proto/yellowstone_vixen_pumpfun.proto"], &["proto"])
         .unwrap();
 }
