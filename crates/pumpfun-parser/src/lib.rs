@@ -11,7 +11,7 @@ pub const ID: Pubkey = PUMP_ID;
 pub mod proto_def {
     #![allow(clippy::large_enum_variant)]
 
-    tonic::include_proto!("vixen.parser.yellowstone_vixen_pumpfun_parser");
+    tonic::include_proto!("vixen.parser.yellowstone_vixen_pumpfun");
 
     pub const DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("descriptor");
 }
