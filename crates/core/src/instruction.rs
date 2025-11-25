@@ -99,6 +99,8 @@ pub struct InstructionShared {
     pub message_header: MessageHeader,
     /// All instructions in the transaction.
     pub instructions: Vec<CompiledInstruction>,
+    /// Inner instructions invoked by this instruction.
+    pub inner_instructions: Vec<InnerInstructions>,
 }
 
 /// A parsed instruction from a transaction update.
@@ -239,6 +241,7 @@ impl InstructionUpdate {
             },
             message_header: header.ok_or(Missing::TransactionMessageHeader)?,
             instructions: instructions.clone(),
+            inner_instructions: inner_instructions.clone(),
         });
 
         let mut outer = instructions
@@ -415,6 +418,24 @@ mod tests {
             },
         ];
 
+        let inner_instructions = vec![InnerInstructions {
+            index: 0,
+            instructions: vec![
+                InnerInstruction {
+                    program_id_index: 1,
+                    accounts: vec![0],
+                    data: vec![1, 2, 3],
+                    stack_height: Some(1),
+                },
+                InnerInstruction {
+                    program_id_index: 2,
+                    accounts: vec![0],
+                    data: vec![4, 5, 6],
+                    stack_height: Some(2),
+                },
+            ],
+        }];
+
         let message = Message {
             header: Some(MessageHeader {
                 num_required_signatures: 1,
@@ -441,8 +462,8 @@ mod tests {
                     fee: 5000,
                     pre_balances: vec![],
                     post_balances: vec![],
-                    inner_instructions: vec![],
-                    inner_instructions_none: true,
+                    inner_instructions: inner_instructions.clone(),
+                    inner_instructions_none: false,
                     log_messages: vec![],
                     log_messages_none: true,
                     pre_token_balances: vec![],
@@ -469,5 +490,19 @@ mod tests {
         assert_eq!(shared.instructions.len(), 2);
         assert_eq!(shared.instructions[0].data, vec![1, 2, 3]);
         assert_eq!(shared.instructions[1].data, vec![4, 5, 6]);
+
+        // 1 outer instruction
+        assert_eq!(shared.inner_instructions.len(), 1);
+
+        // two inner instruction for outer instruction 0
+        assert_eq!(shared.inner_instructions[0].instructions.len(), 2);
+        assert_eq!(
+            shared.inner_instructions[0].instructions[0].data,
+            vec![1, 2, 3]
+        );
+        assert_eq!(
+            shared.inner_instructions[0].instructions[1].data,
+            vec![4, 5, 6]
+        );
     }
 }
