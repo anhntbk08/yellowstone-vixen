@@ -5,7 +5,8 @@
 //! <https://github.com/codama-idl/codama>
 //!
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::BorshDeserialize;
+use borsh::BorshSerialize;
 use solana_pubkey::Pubkey;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
@@ -34,6 +35,8 @@ pub struct LockEscrow {
     pub a_fee: u64,
     pub b_fee: u64,
 }
+
+pub const LOCK_ESCROW_DISCRIMINATOR: [u8; 8] = [190, 106, 121, 6, 200, 182, 21, 75];
 
 impl LockEscrow {
     pub const LEN: usize = 153;
@@ -136,7 +139,9 @@ impl anchor_lang::AccountSerialize for LockEscrow {}
 
 #[cfg(feature = "anchor")]
 impl anchor_lang::Owner for LockEscrow {
-    fn owner() -> Pubkey { crate::DYNAMIC_BONDING_CURVE_ID }
+    fn owner() -> Pubkey {
+        crate::DYNAMIC_BONDING_CURVE_ID
+    }
 }
 
 #[cfg(feature = "anchor-idl-build")]
@@ -144,5 +149,5 @@ impl anchor_lang::IdlBuild for LockEscrow {}
 
 #[cfg(feature = "anchor-idl-build")]
 impl anchor_lang::Discriminator for LockEscrow {
-    const DISCRIMINATOR: [u8; 8] = [0; 8];
+    const DISCRIMINATOR: &[u8] = &[0; 8];
 }

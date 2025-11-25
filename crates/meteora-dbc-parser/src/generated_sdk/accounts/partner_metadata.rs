@@ -5,7 +5,8 @@
 //! <https://github.com/codama-idl/codama>
 //!
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::BorshDeserialize;
+use borsh::BorshSerialize;
 use solana_pubkey::Pubkey;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
@@ -27,6 +28,8 @@ pub struct PartnerMetadata {
     /// Logo of partner
     pub logo: String,
 }
+
+pub const PARTNER_METADATA_DISCRIMINATOR: [u8; 8] = [68, 68, 130, 19, 16, 209, 98, 156];
 
 impl PartnerMetadata {
     #[inline(always)]
@@ -127,7 +130,9 @@ impl anchor_lang::AccountSerialize for PartnerMetadata {}
 
 #[cfg(feature = "anchor")]
 impl anchor_lang::Owner for PartnerMetadata {
-    fn owner() -> Pubkey { crate::DYNAMIC_BONDING_CURVE_ID }
+    fn owner() -> Pubkey {
+        crate::DYNAMIC_BONDING_CURVE_ID
+    }
 }
 
 #[cfg(feature = "anchor-idl-build")]
@@ -135,5 +140,5 @@ impl anchor_lang::IdlBuild for PartnerMetadata {}
 
 #[cfg(feature = "anchor-idl-build")]
 impl anchor_lang::Discriminator for PartnerMetadata {
-    const DISCRIMINATOR: [u8; 8] = [0; 8];
+    const DISCRIMINATOR: &[u8] = &[0; 8];
 }
