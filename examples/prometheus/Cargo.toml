@@ -4,7 +4,7 @@ description = "Example of configuring prometheus metrics"
 publish = false
 edition.workspace = true
 license = "MIT"
-repository = "https://github.com/rpcpool/yellowstone-vixen"
+repository = "https://github.com/anhntbk08/yellowstone-vixen"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive", "cargo", "wrap_help"] }

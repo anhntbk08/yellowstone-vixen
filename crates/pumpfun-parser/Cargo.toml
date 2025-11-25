@@ -2,11 +2,11 @@
 
 [package]
 name = "yellowstone-vixen-pumpfun-parser"
-version = "0.1.1"
+version = "0.5.1"
 edition = "2021"
 description = ""
 license = "MIT"
-repository = "https://github.com/rpcpool/yellowstone-vixen"
+repository = "https://github.com/anhntbk08/yellowstone-vixen"
 
 
 [dependencies]

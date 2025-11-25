@@ -3,3 +3,5 @@ crates/mock/fixtures
 *.env*
 Vixen.toml
 node_modules
+pnpm-lock.yaml
+package.json

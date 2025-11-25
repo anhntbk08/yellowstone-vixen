@@ -4,7 +4,7 @@ version = "0.5.1"
 edition.workspace = true
 description = "Vixen program parser for Virtuals program"
 license = "MIT"
-repository = "https://github.com/rpcpool/yellowstone-vixen"
+repository = "https://github.com/anhntbk08/yellowstone-vixen"
 
 
 [dependencies]
