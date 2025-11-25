@@ -57,7 +57,9 @@ impl Missing {
 
 impl From<Missing> for ParseError {
     #[inline]
-    fn from(value: Missing) -> Self { Self::Missing(value) }
+    fn from(value: Missing) -> Self {
+        Self::Missing(value)
+    }
 }
 
 /// Shared data between all instructions in a transaction.
@@ -95,6 +97,8 @@ pub struct InstructionShared {
     pub accounts: AccountKeys,
     /// The header of the transaction.
     pub message_header: MessageHeader,
+    /// All instructions in the transaction.
+    pub instructions: Vec<CompiledInstruction>,
 }
 
 /// A parsed instruction from a transaction update.
@@ -143,7 +147,9 @@ impl AccountKeys {
     /// # Errors
     /// Returns an error if the index is invalid.
     pub fn get<I: TryInto<usize>>(&self, idx: I) -> Result<Pubkey, AccountKeyError>
-    where I::Error: Into<std::num::TryFromIntError> {
+    where
+        I::Error: Into<std::num::TryFromIntError>,
+    {
         let idx = idx
             .try_into()
             .map_err(|e| AccountKeyError::IndexConvert(e.into()))?;
@@ -232,6 +238,7 @@ impl InstructionUpdate {
                 dynamic_ro: loaded_readonly_addresses,
             },
             message_header: header.ok_or(Missing::TransactionMessageHeader)?,
+            instructions: instructions.clone(),
         });
 
         let mut outer = instructions
@@ -339,7 +346,9 @@ impl InstructionUpdate {
 
     /// Iterate over all inner instructions stored in this instruction.
     #[inline]
-    pub fn visit_all(&self) -> VisitAll<'_> { VisitAll::new(self) }
+    pub fn visit_all(&self) -> VisitAll<'_> {
+        VisitAll::new(self)
+    }
 }
 
 /// An iterator over all inner instructions stored in an instruction update.
@@ -355,7 +364,9 @@ enum VisitAllState<'a> {
 
 impl<'a> VisitAll<'a> {
     #[inline]
-    fn new(ixs: &'a InstructionUpdate) -> Self { Self(VisitAllState::Init(ixs)) }
+    fn new(ixs: &'a InstructionUpdate) -> Self {
+        Self(VisitAllState::Init(ixs))
+    }
 }
 
 impl<'a> Iterator for VisitAll<'a> {
@@ -378,5 +389,85 @@ impl<'a> Iterator for VisitAll<'a> {
                 break Some(ix);
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use yellowstone_grpc_proto::geyser::SubscribeUpdateTransactionInfo;
+    use yellowstone_grpc_proto::solana::storage::confirmed_block::{
+        Message, MessageHeader, Transaction, TransactionStatusMeta,
+    };
+
+    #[test]
+    fn test_instruction_shared_instructions() {
+        let instructions = vec![
+            CompiledInstruction {
+                program_id_index: 1,
+                accounts: vec![0],
+                data: vec![1, 2, 3],
+            },
+            CompiledInstruction {
+                program_id_index: 2,
+                accounts: vec![0],
+                data: vec![4, 5, 6],
+            },
+        ];
+
+        let message = Message {
+            header: Some(MessageHeader {
+                num_required_signatures: 1,
+                num_readonly_signed_accounts: 0,
+                num_readonly_unsigned_accounts: 0,
+            }),
+            account_keys: vec![vec![1; 32], vec![2; 32], vec![3; 32]],
+            recent_blockhash: vec![0; 32],
+            instructions: instructions.clone(),
+            versioned: false,
+            address_table_lookups: vec![],
+        };
+
+        let txn = TransactionUpdate {
+            transaction: Some(SubscribeUpdateTransactionInfo {
+                signature: vec![0; 64],
+                is_vote: false,
+                transaction: Some(Transaction {
+                    signatures: vec![vec![0; 64]],
+                    message: Some(message),
+                }),
+                meta: Some(TransactionStatusMeta {
+                    err: None,
+                    fee: 5000,
+                    pre_balances: vec![],
+                    post_balances: vec![],
+                    inner_instructions: vec![],
+                    inner_instructions_none: true,
+                    log_messages: vec![],
+                    log_messages_none: true,
+                    pre_token_balances: vec![],
+                    post_token_balances: vec![],
+                    rewards: vec![],
+                    loaded_writable_addresses: vec![],
+                    loaded_readonly_addresses: vec![],
+                    return_data: None,
+                    return_data_none: true,
+                    compute_units_consumed: Some(100),
+                    cost_units: None,
+                }),
+                index: 0,
+            }),
+            slot: 12345,
+        };
+
+        let parsed = InstructionUpdate::parse_from_txn(&txn).expect("Failed to parse transaction");
+
+        assert_eq!(parsed.len(), 2);
+
+        // Check that shared data contains the instructions
+        let shared = &parsed[0].shared;
+        assert_eq!(shared.instructions.len(), 2);
+        assert_eq!(shared.instructions[0].data, vec![1, 2, 3]);
+        assert_eq!(shared.instructions[1].data, vec![4, 5, 6]);
     }
 }
