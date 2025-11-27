@@ -6,12 +6,11 @@ version = "0.1.0"
 edition = "2021"
 description = ""
 license = "MIT"
-repository = "https://github.com/anhntbk08/yellowstone-vixen"
 
 
 [dependencies]
 prost = "0.13.1"
-yellowstone-vixen-core = { git = "https://github.com/anhntbk08/yellowstone-vixen", branch = "main",features = ["proto"] }
+yellowstone-vixen-core = { workspace = true, features = ["proto"] }
 tonic = { version = "0.12.1", features = ["gzip", "zstd"] }
 solana-account-info = "2.2.1"
 solana-cpi = "2.2.1"
