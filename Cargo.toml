@@ -99,6 +99,8 @@ yellowstone-vixen-kamino-limit-orders-parser = { path = "crates/kamino-limit-ord
 yellowstone-vixen-raydium-launchpad-parser = { path = "crates/raydium-launchpad-parser", version = "0.5.1" }
 yellowstone-vixen-virtuals-parser = { path = "crates/virtuals-parser", version = "0.5.1" }
 yellowstone-vixen-moonit-parser = { path = "crates/moonit-parser", version = "0.1.0" }
+yellowstone-vixen-spl-token-extensions-parser = { path = "crates/spl-token-extensions-parser", version = "0.6.0-alpha.0" }
+yellowstone-vixen-spl-token-parser = { path = "crates/spl-token-parser", version = "0.6.0-alpha.0" }
 
 # Sources
 yellowstone-vixen-solana-rpc-source = { path = "crates/solana-rpc-source", version = "0.3.1" }
